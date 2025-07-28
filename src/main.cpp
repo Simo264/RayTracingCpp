@@ -1,45 +1,41 @@
 #include <iostream>
 #include <format>
-#include <fstream>
-#include <glm/glm.hpp>
 
-#ifdef _WIN32
-#include <windows.h>
-#endif
+#include <glm/glm.hpp>
+#include <glm/common.hpp>
+
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "stb_image_write.h"
 
 int main()
 {
-#ifdef _WIN32
-  SetConsoleOutputCP(CP_UTF8);
-#endif
+  constexpr size_t width = 256;
+  constexpr size_t height = 256;
+  std::unique_ptr<std::uint8_t[]> image = std::make_unique<std::uint8_t[]>(width * height * 3);
 
-  std::ofstream output_file;
-  output_file.open("image.ppm", std::ios::out);
-  if (!output_file)
+  for (int y = 0; y < height; y++)
   {
-    std::cerr << "can't open output file" << std::endl;
-    return 1;
-  }
-
-  int image_width = 256;
-  int image_height = 256;
-  output_file << "P3\n" << image_width << ' ' << image_height << "\n255\n";
-  for (int j = 0; j < image_height; j++)
-  {
-    for (int i = 0; i < image_width; i++)
+    std::clog << "\rScanlines remaining: " << (height - y) << ' ' << std::flush;
+    for (int x = 0; x < width; x++)
     {
-      auto r = double(i) / (image_width - 1);
-      auto g = double(j) / (image_height - 1);
-      auto b = 0.0;
+      float r = (static_cast<float>(x) / (width - 1));  // [0 - 1]
+      float g = (static_cast<float>(y) / (height - 1)); // [0 - 1]
+      float b = 0.f;
 
-      int ir = int(255.999 * r);
-      int ig = int(255.999 * g);
-      int ib = int(255.999 * b);
+      glm::u8vec3 pixel{};
+      pixel.r = static_cast<std::uint8_t>(glm::mix(0.f, 255.f, r)); // [0 - 255]
+      pixel.g = static_cast<std::uint8_t>(glm::mix(0.f, 255.f, g)); // [0 - 255]
+      pixel.b = static_cast<std::uint8_t>(b);
 
-
-      output_file << ir << ' ' << ig << ' ' << ib << '\n';
+      size_t index = (y * width + x) * 3;
+      image[index + 0] = pixel.r;
+      image[index + 1] = pixel.g;
+      image[index + 2] = pixel.b;
     }
   }
-  output_file.flush();
-  output_file.close();
+
+  std::clog << "\rDone.                 \n";
+
+  stbi_write_png("image.png", width, height, 3, image.get(), width * 3);
+  return 0;
 }

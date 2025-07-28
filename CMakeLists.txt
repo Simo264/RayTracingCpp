@@ -19,7 +19,7 @@ FetchContent_MakeAvailable(glm)
 
 
 # add the executable
-add_executable(RayTracingCpp 
+add_executable(RayTracingCpp
     src/main.cpp
 )
 
