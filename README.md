@@ -9,9 +9,9 @@ The project is structured in two main stages:
 ---
 
 ## 🔧 Build Instructions
-...
 
----
+- cmake -S . -B build/
+
 
 ## 📚 References
 
