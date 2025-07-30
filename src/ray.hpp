@@ -1,0 +1,40 @@
+#pragma once
+
+#include <glm/glm.hpp>
+
+/**
+ * @brief The one thing that all ray tracers have is a ray class and a computation of what color is seen along a ray. 
+ * Let's think of a ray as a function P(t) = O + t*d.
+ *  
+ * Here P is a 3D position along a line in 3D. A is the ray origin and b is the ray direction. 
+ * The ray parameter t is a real number (double in the code). 
+ * Plug in a different t and P(t) moves the point along the ray. 
+ * Add in negative t values and you can go anywhere on the 3D line. 
+ * For positive t, you get only the parts in front of A, and this is what is often called a half-line or a ray.
+ * 
+ * We can represent the idea of a ray as a class, and represent the function P(t) 
+ * as a function that we'll call ray::at(t)
+ */
+class Ray
+{
+public:
+	Ray() : _origin{}, _direction{}
+	{}
+
+	Ray(glm::vec3 origin, glm::vec3 direction) : 
+		_origin{ origin }, _direction{ direction }
+	{};
+
+	~Ray() = default;
+	
+	/** @brief Computes the position along the ray at parameter t. */
+	glm::vec3 at(float t) const;
+
+	auto& origin() const { return _origin; }
+	auto& direction() const { return _direction; }
+
+private:
+	glm::vec3 _origin;
+	glm::vec3 _direction;
+};
+
