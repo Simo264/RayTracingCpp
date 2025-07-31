@@ -1,6 +1,7 @@
 #include <iostream>
 #include <format>
 #include <optional>
+#include <limits>
 
 #include <glm/glm.hpp>
 
@@ -9,7 +10,7 @@
 
 #include "ray.hpp"
 
-static bool sphere_intersection(const glm::vec3& sphere_center, 
+static float sphere_intersection(const glm::vec3& sphere_center, 
                                 float sphere_radius,
                                 const Ray& ray)
 {
@@ -30,13 +31,26 @@ static bool sphere_intersection(const glm::vec3& sphere_center,
   float b = glm::dot(2.f*d, oc);
   float c = glm::dot(oc, oc) - glm::pow(sphere_radius,2);
   float delta = glm::pow(b,2) - 4.f*a*c;
-  return delta >= 0;
+  
+  if (delta == 0)
+    return -b / (2.0 * a);
+  
+  if (delta > 0)
+    return (-b - std::sqrt(delta)) / (2.0 * a); // return the closest point
+
+  return std::numeric_limits<float>::infinity();
 }
 
 static glm::vec3 ray_color(const Ray& ray)
 {
-  if (sphere_intersection(glm::vec3(0, 0, -1), 0.5, ray))
-    return glm::vec3(1, 0, 0);
+  float t = sphere_intersection(glm::vec3(0, 0, -1), 0.5, ray);
+  if (!std::isinf(t))
+  {
+    glm::vec3 N = glm::normalize(ray.at(t) - glm::vec3(0, 0, -1));
+    N = glm::vec3(N.x + 1, N.y + 1, N.z + 1);
+    N = 0.5f * N; // from [-1, 1] to [0, 1]
+    return N;
+  }
 
   glm::vec3 unit_direction = glm::normalize(ray.direction());
   float a = (unit_direction.y + 1.0) * 0.5f;
