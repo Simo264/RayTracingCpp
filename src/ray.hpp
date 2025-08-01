@@ -18,17 +18,14 @@
 class Ray
 {
 public:
-	Ray() : _origin{}, _direction{}
-	{}
-
-	Ray(glm::vec3 origin, glm::vec3 direction) : 
+	Ray(glm::vec3 origin = glm::vec3(0.f), glm::vec3 direction = glm::vec3(1.f, 0.f, 0.f)) :
 		_origin{ origin }, _direction{ direction }
 	{};
 
 	~Ray() = default;
 	
-	/** @brief Computes the position along the ray at parameter t. */
-	glm::vec3 at(float t) const;
+	/** @brief Computes the position along the ray at parameter t: P(t) = O + td */
+	constexpr glm::vec3 at(float t) const { return _origin + t * _direction; }
 
 	auto& origin() const { return _origin; }
 	auto& direction() const { return _direction; }

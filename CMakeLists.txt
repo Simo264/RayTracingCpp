@@ -19,8 +19,15 @@ FetchContent_MakeAvailable(glm)
 
 
 add_executable(RayTracingCpp
-  src/ray.cpp
+  src/stb_image_write.h 
+  src/HittableObject.hpp
+  src/Ray.hpp
+  src/Sphere.hpp
+  src/Scene.hpp
+
   src/main.cpp
+  src/Sphere.cpp
+  src/Scene.cpp
 )
 
 target_link_libraries(RayTracingCpp PRIVATE glm::glm)

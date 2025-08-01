@@ -8,55 +8,24 @@
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
 
-#include "ray.hpp"
+#include "Ray.hpp"
+#include "Sphere.hpp"
+#include "Scene.hpp"
 
-static float sphere_intersection(const glm::vec3& sphere_center, 
-                                float sphere_radius,
-                                const Ray& ray)
+static constexpr float infinity = std::numeric_limits<float>::infinity();
+
+static glm::vec3 ray_color(const Ray& ray, const Scene& scene)
 {
-  //(P-C) dot (P-C) = r^2
-  //(O+td - C) dot (O+td - C) = r^2
-  //(d dot d)t^2 + 2d dot (O-C)t + (O-C) dot (O-C) - r^2 = 0
-  
-  // at^2 + bt + c = 0
-  // a = (d dot d)
-  // b = 2d dot (O-C)
-  // c = (O-C) dot (O-C) - r^2
-
-  auto& const d = ray.direction();
-  auto& const o = ray.origin();
-  glm::vec3 oc = o - sphere_center;
-
-  float a = glm::dot(d, d);
-  float b = glm::dot(2.f*d, oc);
-  float c = glm::dot(oc, oc) - glm::pow(sphere_radius,2);
-  float delta = glm::pow(b,2) - 4.f*a*c;
-  
-  if (delta == 0)
-    return -b / (2.0 * a);
-  
-  if (delta > 0)
-    return (-b - std::sqrt(delta)) / (2.0 * a); // return the closest point
-
-  return std::numeric_limits<float>::infinity();
-}
-
-static glm::vec3 ray_color(const Ray& ray)
-{
-  float t = sphere_intersection(glm::vec3(0, 0, -1), 0.5, ray);
-  if (!std::isinf(t))
+  HitRecord record{};
+  if(scene.hitAnything(ray, 0.f, infinity, record))
   {
-    glm::vec3 N = glm::normalize(ray.at(t) - glm::vec3(0, 0, -1));
-    N = glm::vec3(N.x + 1, N.y + 1, N.z + 1);
-    N = 0.5f * N; // from [-1, 1] to [0, 1]
-    return N;
+    return 0.5f * (record.normal + glm::vec3(1.f));
   }
 
   glm::vec3 unit_direction = glm::normalize(ray.direction());
   float a = (unit_direction.y + 1.0) * 0.5f;
   return glm::mix(glm::vec3(1.f), glm::vec3(0.5f, 0.7f, 1.0f), a); // linear interpolation between blue and white
 }
-
 
 
 int main()
@@ -86,14 +55,20 @@ int main()
     viewport_v / 2.f;
   glm::vec3 pixel00_loc = viewport_upper_left + (pixel_delta_u + pixel_delta_v) * 0.5f;
 
+
+  // World
+  Scene scene;
+  scene.addObject(std::make_shared<Sphere>(glm::vec3(0.f, 0.f, -1.f), 0.5f));
+  scene.addObject(std::make_shared<Sphere>(glm::vec3(0.f, -100.5f, -1.f), 100.f));
+
+
   // Render
-  std::unique_ptr<uint8_t[]> image = std::make_unique<uint8_t[]>(image_size.x * image_size.y * 3);
+  auto image = std::make_unique<uint8_t[]>(image_size.x * image_size.y * 3);
   for (size_t y = 0; y < image_size.y; y++)
   {
     std::clog << "\rScanlines remaining: " << (image_size.y - y) << ' ' << std::flush;
     for (size_t x = 0; x < image_size.x; x++)
     {
-      // Calcola il centro 3D del pixel corrente sulla viewport
       glm::vec3 pixel_center = pixel00_loc +
         (pixel_delta_u * static_cast<float>(x)) + 
         (pixel_delta_v * static_cast<float>(y));
@@ -101,7 +76,7 @@ int main()
       glm::vec3 ray_direction = pixel_center - camera_center;
       Ray ray(camera_center, ray_direction);
 
-      glm::vec3 pixel_color = ray_color(ray);
+      glm::vec3 pixel_color = ray_color(ray, scene);
       pixel_color.r = static_cast<int>(glm::mix(0.f, 255.f, pixel_color.r)); // from [0-1] to [0-255]
       pixel_color.g = static_cast<int>(glm::mix(0.f, 255.f, pixel_color.g)); // from [0-1] to [0-255]
       pixel_color.b = static_cast<int>(glm::mix(0.f, 255.f, pixel_color.b)); // from [0-1] to [0-255]
