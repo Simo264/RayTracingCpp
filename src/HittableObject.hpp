@@ -3,6 +3,7 @@
 #include <glm/glm.hpp>
 
 class Ray;
+struct Interval;
 
 struct HitRecord
 {
@@ -32,8 +33,7 @@ public:
 	~HittableObject() = default;
 
 	virtual bool hit(const Ray& ray, 
-									 float rayTmin,
-									 float rayTmax,
+									 const Interval& interval,
 									 HitRecord& record) const = 0;
 };
 

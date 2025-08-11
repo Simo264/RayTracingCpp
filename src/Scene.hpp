@@ -6,6 +6,7 @@
 class HittableObject;
 class Ray;
 struct HitRecord;
+struct Interval;
 
 class Scene
 {
@@ -15,7 +16,9 @@ public:
 
 	void addObject(std::shared_ptr<HittableObject> object);
 	void clear();
-	bool hitAnything(const Ray& ray, float rayTmin, float rayTmax, HitRecord& record) const;
+	bool hitAnything(const Ray& ray, 
+									 const Interval& interval,
+									 HitRecord& record) const;
 
 private:
 	std::vector<std::shared_ptr<HittableObject>> _objects;

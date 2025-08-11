@@ -22,12 +22,16 @@ add_executable(RayTracingCpp
   src/stb_image_write.h 
   src/HittableObject.hpp
   src/Ray.hpp
+  src/Interval.hpp
   src/Sphere.hpp
-  src/Scene.hpp
-
-  src/main.cpp
   src/Sphere.cpp
+  src/Plane.hpp
+  src/Plane.cpp
+  src/Scene.hpp
   src/Scene.cpp
+  src/Camera.hpp
+  src/Camera.cpp
+  src/main.cpp
 )
 
 target_link_libraries(RayTracingCpp PRIVATE glm::glm)

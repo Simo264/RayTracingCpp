@@ -1,46 +1,59 @@
 #include "Sphere.hpp"
 #include "Ray.hpp"
+#include "Interval.hpp"
 
-bool Sphere::hit(const Ray& ray, float rayTmin, float rayTmax, HitRecord& rec) const
+bool Sphere::hit(const Ray& ray, 
+                 const Interval& interval, 
+                 HitRecord& rec) const
 {
-  //(P-C) dot (P-C) = r^2
-  //(O+td - C) dot (O+td - C) = r^2
-  //(d dot d)t^2 + 2d dot (O-C)t + (O-C) dot (O-C) - r^2 = 0
-  auto& const d = ray.direction();
-  auto& const o = ray.origin();
-  glm::vec3 oc = o - _center;
+  // A sphere is defined by a center point p0 and a radius r.
+  // Any point p lies on the surface of the sphere if:
+  // (p - p0) dot (p - p0) = r^2
+  //
+  // A ray is described using the parametric form:
+  // p(t) = r0 + t*d
+  //
+  // To find if and where the ray intersects the sphere, we substitute p(t) into the sphere equation:
+  // (r0 + t*d - p0) dot (r0 + t*d - p0) = r^2
+  //
+  // Expanding this expression yields a quadratic equation in t:
+  // (d dot d)t^2 + 2*(d dot (r0 - p0))*t + ((r0 - p0) dot (r0 - p0) - r^2) = 0
+  //
+  // Solving this quadratic gives us potential intersection points.
+  // If the discriminant (delta) is negative, there are no real roots -> no intersection.
+  // Otherwise, we compute the roots and check whether they lie within the valid interval.
 
-  // at^2 + bt + c = 0
-  // a = (d dot d)
-  // b = 2d dot (O-C)
-  // c = (O-C) dot (O-C) - r^2
-  float a = glm::dot(d, d);
-  float b = glm::dot(2.f * d, oc);
-  float c = glm::dot(oc, oc) - glm::pow(_radius, 2);
-  double delta = glm::pow(b, 2) - 4.f * a * c;
-  if (delta < 0) // no intersections
+  auto p0 = _center;
+  auto d = ray.direction(); // Assume already normalized
+  auto r0 = ray.origin();
+  glm::vec3 r0p0 = r0 - p0;
+
+  // Coefficients for the quadratic equation: at^2 + bt + c = 0
+  auto a = glm::dot(d, d);
+  auto b = 2.f * glm::dot(d, r0p0);
+  auto c = glm::dot(r0p0, r0p0) - glm::pow(_radius, 2);
+  auto delta = glm::pow(b, 2) - 4.f * a * c;
+  if (delta < 1e-6f) // No real roots -> no intersection
     return false;
 
-  double sqroot = std::sqrt(delta);
-  double den = (2.0f * a);
-  double t = (-b - sqroot) / den; // calculate the nearest point
-  if (t > rayTmax || t < rayTmin)
+  auto sqroot = std::sqrt(delta);
+  auto den = (2.0f * a);
+  auto t = (-b - sqroot) / den; // Try the nearest root first
+  if (!interval.surrounds(t))
   {
-    t = (-b + sqroot) / den; // calculate the farest point
-    if (t > rayTmax || t < rayTmin)
+    t = (-b + sqroot) / den; // Try the farther root
+    if (!interval.surrounds(t))
       return false;
   }
 
   glm::vec3 p = ray.at(t);
-  glm::vec3 outerSurfaceNormal = (p - _center) / _radius;
-  glm::vec3 N = outerSurfaceNormal;
+  glm::vec3 N = (p - p0) / _radius; // Already normalized
   bool isRayOutside = true;
-  if (glm::dot(d, N) > 0.f) // if ray is inside the sphere
+  if (glm::dot(d, N) > 0.f) // Ray is inside the sphere
   {
     isRayOutside = false;
     N = -N;
   }
-
 
   rec.t = static_cast<float>(t);
   rec.p = p;
