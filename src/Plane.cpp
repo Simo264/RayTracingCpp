@@ -27,8 +27,8 @@ bool Plane::hit(const Ray& ray,
 	// It's worth noting that if the plane and ray are parallel we return false (indicating no intersection)
 	// when the denominator is less than a very small threshold.
 
-	auto p0 = _center;
-	auto n = _normal;
+	auto p0 = __center;
+	auto n = __normal;
 	auto r0 = ray.origin();
 	auto d = ray.direction();
 
@@ -44,8 +44,8 @@ bool Plane::hit(const Ray& ray,
 	rec.p = ray.at(t);
 
 	// Flip normal if ray hits from below
-	bool isRayOutside = denom < 0.f;
-	rec.normal = isRayOutside ? n : -n;
-	rec.isRayOutside = isRayOutside;
+	bool is_ray_outside = denom < 0.f;
+	rec.normal = is_ray_outside ? n : -n;
+	rec.is_ray_outside = is_ray_outside;
 	return true;
 }

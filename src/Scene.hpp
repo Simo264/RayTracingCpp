@@ -21,5 +21,5 @@ public:
 									 HitRecord& record) const;
 
 private:
-	std::vector<std::shared_ptr<HittableObject>> _objects;
+	std::vector<std::shared_ptr<HittableObject>> __objects;
 };

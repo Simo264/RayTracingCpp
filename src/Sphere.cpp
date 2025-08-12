@@ -23,7 +23,7 @@ bool Sphere::hit(const Ray& ray,
   // If the discriminant (delta) is negative, there are no real roots -> no intersection.
   // Otherwise, we compute the roots and check whether they lie within the valid interval.
 
-  auto p0 = _center;
+  auto p0 = __center;
   auto d = ray.direction(); // Assume already normalized
   auto r0 = ray.origin();
   glm::vec3 r0p0 = r0 - p0;
@@ -31,7 +31,7 @@ bool Sphere::hit(const Ray& ray,
   // Coefficients for the quadratic equation: at^2 + bt + c = 0
   auto a = glm::dot(d, d);
   auto b = 2.f * glm::dot(d, r0p0);
-  auto c = glm::dot(r0p0, r0p0) - glm::pow(_radius, 2);
+  auto c = glm::dot(r0p0, r0p0) - glm::pow(__radius, 2);
   auto delta = glm::pow(b, 2) - 4.f * a * c;
   if (delta < 1e-6f) // No real roots -> no intersection
     return false;
@@ -47,17 +47,17 @@ bool Sphere::hit(const Ray& ray,
   }
 
   glm::vec3 p = ray.at(t);
-  glm::vec3 N = (p - p0) / _radius; // Already normalized
-  bool isRayOutside = true;
-  if (glm::dot(d, N) > 0.f) // Ray is inside the sphere
+  glm::vec3 n = (p - p0) / __radius; // Already normalized
+  bool is_ray_outside = true;
+  if (glm::dot(d, n) > 0.f) // Ray is inside the sphere
   {
-    isRayOutside = false;
-    N = -N;
+    is_ray_outside = false;
+    n = -n;
   }
 
   rec.t = static_cast<float>(t);
   rec.p = p;
-  rec.normal = N;
-  rec.isRayOutside = isRayOutside;
+  rec.normal = n;
+  rec.is_ray_outside = is_ray_outside;
 	return true;
 }

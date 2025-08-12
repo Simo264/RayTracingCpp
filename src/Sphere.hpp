@@ -6,18 +6,18 @@ class Sphere : public HittableObject
 {
 public:
 	Sphere(glm::vec3 center, float r) :
-		_center{ center }, _radius{ std::fmax(0.f, r) }
+		__center{ center }, __radius{ std::fmax(0.f, r) }
 	{}
 
 	bool hit(const Ray& ray,
 					 const Interval& interval,
 					 HitRecord& rec) const;
 
-	auto center() const { return _center; }
-	auto radius() const { return _radius; }
+	auto center() const { return __center; }
+	auto radius() const { return __radius; }
 
 private:
-	glm::vec3 _center;
-	float _radius;
+	glm::vec3 __center;
+	float __radius;
 };
 

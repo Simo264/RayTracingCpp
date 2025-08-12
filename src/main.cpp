@@ -12,8 +12,8 @@
 int main()
 {
   // Camera
-  constexpr auto imageResolution = glm::ivec2(400, 225);
-  Camera camera(imageResolution);
+  constexpr auto image_resolution = glm::ivec2(1280, 720);
+  Camera camera(image_resolution);
 
   // World
   Scene scene;
@@ -22,9 +22,9 @@ int main()
 
   // Render
   camera.render(scene);
-  auto imageOutput = camera.getImageOutput();
-  auto imageSize = camera.getImageSize();
+  auto image_output = camera.getImageOutput();
+  auto image_size = camera.getImageSize();
   
-  stbi_write_png("image.png", imageSize.x, imageSize.y, 3, imageOutput.get(), imageSize.x * 3);
+  stbi_write_png("image.png", image_size.x, image_size.y, 3, image_output.get(), image_size.x * 3);
   return 0;
 }

@@ -5,30 +5,30 @@
 
 void Scene::addObject(std::shared_ptr<HittableObject> object)
 {
-	_objects.push_back(object);
+	__objects.push_back(object);
 }
 
 void Scene::clear()
 {
-	_objects.clear();
+	__objects.clear();
 }
 
 bool Scene::hitAnything(const Ray& ray, 
 												const Interval& interval, 
 												HitRecord& record) const
 {
-	HitRecord tmpRec{};
-	bool hitAnything = false;
-	float closestTmax = interval.max;
+	HitRecord rec{};
+	bool hit_anything = false;
+	float closest_tmax = interval.max;
 
-	for (const auto& object : _objects)
+	for (const auto& object : __objects)
 	{
-		if (object->hit(ray, Interval(interval.min, closestTmax), tmpRec))
+		if (object->hit(ray, Interval(interval.min, closest_tmax), rec))
 		{
-			closestTmax = tmpRec.t;
-			hitAnything = true;
-			record = tmpRec;
+			closest_tmax = rec.t;
+			hit_anything = true;
+			record = rec;
 		}
 	}
-	return hitAnything;
+	return hit_anything;
 }

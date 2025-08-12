@@ -8,13 +8,13 @@ struct Interval;
 struct HitRecord
 {
 	HitRecord() :
-		p{}, normal{}, t{ 0.0 }, isRayOutside{ true }
+		p{}, normal{}, t{ 0.0 }, is_ray_outside{ true }
 	{}
 
 	glm::vec3 p;
 	glm::vec3 normal;
 	float t;
-	bool isRayOutside;
+	bool is_ray_outside;
 };
 
 /**
