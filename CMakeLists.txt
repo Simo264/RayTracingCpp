@@ -1,9 +1,8 @@
-cmake_minimum_required(VERSION 3.13) # CMP0077 è disponibile da 3.13
+cmake_minimum_required(VERSION 3.16)
 cmake_policy(SET CMP0077 NEW)
 
 project(RayTracingCpp)
 
-# specify the C++ standard
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
@@ -17,21 +16,44 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(glm)
 
-
-add_executable(RayTracingCpp
-  src/stb_image_write.h 
-  src/HittableObject.hpp
-  src/Ray.hpp
-  src/Interval.hpp
-  src/Sphere.hpp
-  src/Sphere.cpp
-  src/Plane.hpp
-  src/Plane.cpp
-  src/Scene.hpp
-  src/Scene.cpp
-  src/Camera.hpp
-  src/Camera.cpp
+set(SOURCES
   src/main.cpp
+  src/Camera.cpp
+  src/Image.cpp
+  src/Random.cpp
+
+  src/Scene/Scene.cpp
+  src/Scene/Sphere.cpp
+  src/Scene/Plane.cpp
+  src/Material/Lambertian.cpp
+  src/Material/Metal.cpp
+
+  src/Renderer/Renderer.cpp
 )
+
+# Header files (optional to list, but good for IDEs)
+set(HEADERS
+    include/stb_image_write.h
+    include/Camera.hpp
+    include/Image.hpp
+    include/Random.hpp
+    include/Ray.hpp
+    include/Interval.hpp
+    include/Scene/Scene.hpp
+    include/Scene/IHittableObject.hpp
+    include/Scene/Sphere.hpp
+    include/Scene/Plane.hpp
+
+    include/Material/IMaterial.hpp
+    include/Material/Lambertian.hpp
+    include/Material/Metal.hpp
+
+    include/Renderer/Renderer.hpp
+)
+
+add_executable(RayTracingCpp ${SOURCES} ${HEADERS})
+
+# Add include directories scoped to this target
+target_include_directories(RayTracingCpp PRIVATE "include/")
 
 target_link_libraries(RayTracingCpp PRIVATE glm::glm)

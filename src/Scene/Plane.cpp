@@ -1,4 +1,4 @@
-#include "Plane.hpp"
+#include "Scene/Plane.hpp"
 #include "Ray.hpp"
 #include "Interval.hpp"
 
@@ -47,5 +47,6 @@ bool Plane::hit(const Ray& ray,
 	bool is_ray_outside = denom < 0.f;
 	rec.normal = is_ray_outside ? n : -n;
 	rec.is_ray_outside = is_ray_outside;
+	rec.material = __material;
 	return true;
 }

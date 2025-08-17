@@ -1,9 +1,9 @@
-#include "Scene.hpp"
+#include "Scene/Scene.hpp"
+#include "Scene/IHittableObject.hpp"
 #include "Ray.hpp"
-#include "HittableObject.hpp"
 #include "Interval.hpp"
 
-void Scene::addObject(std::shared_ptr<HittableObject> object)
+void Scene::add(std::shared_ptr<IHittableObject> object)
 {
 	__objects.push_back(object);
 }
@@ -13,9 +13,7 @@ void Scene::clear()
 	__objects.clear();
 }
 
-bool Scene::hitAnything(const Ray& ray, 
-												const Interval& interval, 
-												HitRecord& record) const
+bool Scene::hitAnything(const Ray& ray, const Interval& interval, HitRecord& record) const
 {
 	HitRecord rec{};
 	bool hit_anything = false;

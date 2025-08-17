@@ -1,8 +1,8 @@
-#include "Sphere.hpp"
+#include "Scene/Sphere.hpp"
 #include "Ray.hpp"
 #include "Interval.hpp"
 
-bool Sphere::hit(const Ray& ray, 
+bool Sphere::hit(const Ray& ray,
                  const Interval& interval, 
                  HitRecord& rec) const
 {
@@ -36,7 +36,7 @@ bool Sphere::hit(const Ray& ray,
   if (delta < 1e-6f) // No real roots -> no intersection
     return false;
 
-  auto sqroot = std::sqrt(delta);
+  auto sqroot = glm::sqrt(delta);
   auto den = (2.0f * a);
   auto t = (-b - sqroot) / den; // Try the nearest root first
   if (!interval.surrounds(t))
@@ -46,8 +46,8 @@ bool Sphere::hit(const Ray& ray,
       return false;
   }
 
-  glm::vec3 p = ray.at(t);
-  glm::vec3 n = (p - p0) / __radius; // Already normalized
+  auto p = ray.at(t);
+  auto n = (p - p0) / __radius; // Already normalized
   bool is_ray_outside = true;
   if (glm::dot(d, n) > 0.f) // Ray is inside the sphere
   {
@@ -59,5 +59,6 @@ bool Sphere::hit(const Ray& ray,
   rec.p = p;
   rec.normal = n;
   rec.is_ray_outside = is_ray_outside;
+  rec.material = __material;
 	return true;
 }

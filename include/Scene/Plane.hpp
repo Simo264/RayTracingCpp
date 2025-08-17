@@ -1,13 +1,15 @@
 #pragma once
 
-#include "HittableObject.hpp"
+#include "IHittableObject.hpp"
 
-class Plane : public HittableObject
+class Plane : public IHittableObject
 {
 public:
 	Plane(glm::vec3 center = glm::vec3(0.f),						// default center position
-				glm::vec3 normal = glm::vec3(0.f, 1.f, 0.f))	// default normal vector
-		: __center{ center }, __normal{ normal } {}
+				glm::vec3 normal = glm::vec3(0.f, 1.f, 0.f),  // default normal vector
+				std::shared_ptr<IMaterial> material = nullptr	// default material
+	)	
+		: __center{ center }, __normal{ normal }, __material { material } {}
 	~Plane() = default;
 
 	bool hit(const Ray& ray,
@@ -20,4 +22,5 @@ public:
 private:
 	glm::vec3 __center;
 	glm::vec3 __normal;
+	std::shared_ptr<IMaterial> __material;
 };
