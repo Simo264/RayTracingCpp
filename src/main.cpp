@@ -20,7 +20,7 @@ int main()
   constexpr auto image_resolution = glm::ivec2(854, 480);
   constexpr auto camera_position = glm::vec3(-2.f, 2.f, 1.f);
   constexpr auto camera_look_at = glm::vec3(0.f, 0.f, -1.f);
-  Camera camera(camera_position, image_resolution, camera_look_at, 20.f);
+  Camera camera(camera_position, image_resolution, camera_look_at, 20.f, 10.0f, 3.4f);
 
   // Materials
   auto material_ground = std::make_shared<Lambertian>(glm::vec3(0.8f, 0.8f, 0.0f));

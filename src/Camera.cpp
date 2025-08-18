@@ -16,12 +16,16 @@
 Camera::Camera(glm::vec3 position,
 							 glm::uvec2 image_resolution,
 							 glm::vec3 look_at,
-							 float vfov) :
+							 float vfov, 
+							 float defocus_angle,
+							 float focus_dist) :
 	position{ position },
-	vfov{ vfov },
-	samples_per_pixel{ 8 },
 	image{ Image(image_resolution.x, image_resolution.y) },
-	__max_depth{ 10 }
+	samples_per_pixel{ 8 },
+	__max_depth{ 10 },
+	__vfov{ vfov },
+	__defocus_angle{ defocus_angle },
+	__focus_dist{ focus_dist }
 {
 	__setupViewport(look_at);
 }
@@ -40,7 +44,7 @@ void Camera::captureImage(const Scene& scene)
 			auto pixel_color = glm::vec3(0.f); // accumulates the color contributions from each sample.
 			for (auto sample = 0u; sample < samples_per_pixel; sample++)
 			{
-				auto offset = Random::generateVector2(Interval(-0.5f, 0.5f));
+				auto offset = Random::generateRandomVector2(Interval(-0.5f, 0.5f));
 				auto ray = __getRay(x, y, offset);	// Computes a ray from the camera through the pixel
 																						// with the given subpixel offset.
 				pixel_color += __renderer.computeRayColor(ray, scene, __max_depth); // traces the ray through the scene and returns  
@@ -94,11 +98,11 @@ void Camera::__setupViewport(glm::vec3 look_at)
 	auto image_resolution = glm::uvec2(image.resolution_w, image.resolution_h);
 	auto aspect = static_cast<float>(image_resolution.x) / image_resolution.y;
 
-	// Calculates the physical size of the viewport based on the vertical field of view and distance to the target.
-	auto focal_length = glm::length(position - look_at);
-	auto theta = glm::radians(vfov);
+	// Calculates the physical size of the viewport based on the vertical field of view 
+	// and distance to the target.
+	auto theta = glm::radians(__vfov);
 	auto h = glm::tan(theta / 2);
-	auto viewport_h = 2 * h * focal_length;
+	auto viewport_h = 2 * h * __focus_dist;
 	auto viewport_w = viewport_h * (aspect);
 	
 	// Constructs an orthonormal basis for the camera's local coordinate system.
@@ -116,10 +120,16 @@ void Camera::__setupViewport(glm::vec3 look_at)
 	
 	// Calculates the center of the top-left pixel to begin ray generation.
 	auto viewport_upper_left = position - 
-		(focal_length * __w) - 
+		(__focus_dist * __w) - 
 		viewport_u / 2.f - 
 		viewport_v / 2.f;
 	__pixel00_loc = viewport_upper_left + (__pixel_delta_u + __pixel_delta_v) * 0.5f;
+
+
+	// Calculate the camera defocus disk basis vectors.
+	auto defocus_radius = __focus_dist * glm::tan(glm::radians(__defocus_angle/2));
+	__defocus_disk_u = __u * defocus_radius;
+	__defocus_disk_v = __v * defocus_radius;
 }
 
 Ray Camera::__getRay(uint32_t x, uint32_t y, glm::vec2 offset) const
@@ -129,9 +139,18 @@ Ray Camera::__getRay(uint32_t x, uint32_t y, glm::vec2 offset) const
 		+ ((x + offset.x) * __pixel_delta_u)
 		+ ((y + offset.y) * __pixel_delta_v);
 
+	
 	auto ray_origin = position;
+	if (__defocus_angle > 0)
+		ray_origin = __defocus_disk_sample();
+
 	auto ray_direction = glm::normalize(pixel_sample - ray_origin);
-	return Ray(position, ray_direction);
+	return Ray(ray_origin, ray_direction);
 }
 
-
+glm::vec3 Camera::__defocus_disk_sample() const
+{
+	// Returns a random point in the camera defocus disk.
+	auto p = Random::generateRandomUnitDiskPoint();
+	return position + (p.x * __defocus_disk_u) + (p.y * __defocus_disk_v);
+}

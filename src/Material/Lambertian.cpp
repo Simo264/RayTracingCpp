@@ -16,7 +16,7 @@ bool Lambertian::scatter(const Ray& incident,
 	// unit vector. This simple operation naturally biases the resulting
 	// direction towards the normal, creating a more realistic, non-uniform
 	// distribution where rays are more likely to scatter near the normal.
-	auto scattered_direction = rec.normal + Random::generateUnitVector();
+	auto scattered_direction = rec.normal + Random::generateRandomUnitVector3();
 
 	// If the random unit vector we generate is exactly opposite the normal vector, 
 	// the two will sum to zero, which will result in a zero scatter direction vector.

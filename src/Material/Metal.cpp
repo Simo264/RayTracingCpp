@@ -15,7 +15,7 @@ bool Metal::scatter(const Ray& incident,
 	auto reflected = glm::reflect(incident.direction(), rec.normal);
 	// Apply fuzz (if any)
 	if (__fuzz != 0.f)
-		reflected = glm::normalize(reflected + __fuzz * Random::generateUnitVector());
+		reflected = glm::normalize(reflected + __fuzz * Random::generateRandomUnitVector3());
 	
 	Ray scattered(rec.p, reflected);
 	if (glm::dot(scattered.direction(), rec.normal) > 0.f)
