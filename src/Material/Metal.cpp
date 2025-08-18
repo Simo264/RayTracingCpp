@@ -23,9 +23,7 @@ bool Metal::scatter(const Ray& incident,
 		scattered_ray = scattered;
 		return true;
 	}
-	else
-	{
-		// no scatter
-		return false;
-	}
+
+	// no scatter
+	return false;
 }

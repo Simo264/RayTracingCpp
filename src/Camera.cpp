@@ -15,41 +15,43 @@
 
 Camera::Camera(glm::vec3 position,
 							 glm::uvec2 image_resolution,
-							 float focal_length,
-							 float viewport_h) :
+							 glm::vec3 look_at,
+							 float vfov) :
 	position{ position },
+	vfov{ vfov },
 	samples_per_pixel{ 8 },
 	image{ Image(image_resolution.x, image_resolution.y) },
 	__max_depth{ 10 }
 {
-	__setupViewport(viewport_h, focal_length);
+	__setupViewport(look_at);
 }
 
 void Camera::captureImage(const Scene& scene)
 {
 	auto image_resolution = glm::uvec2(image.resolution_w, image.resolution_h);
-	std::cout << "Number of total pixels: " << (image_resolution.x * image_resolution.y) << "\n";
-
 	for (auto y = 0u; y < image_resolution.y; y++)
 	{
 		for (auto x = 0u; x < image_resolution.x; x++)
 		{
 			std::clog << "\rScanlines remaining: " << (image_resolution.y - y) << ' ' << std::flush;
 			
-			auto pixel_color = glm::vec3(0.f);
+			// This loop performs supersampling antialiasing by shooting multiple rays per pixel with slight random offsets.
+			// This technique smooths edges and improves image quality by sampling multiple points within each pixel.
+			auto pixel_color = glm::vec3(0.f); // accumulates the color contributions from each sample.
 			for (auto sample = 0u; sample < samples_per_pixel; sample++)
 			{
 				auto offset = Random::generateVector2(Interval(-0.5f, 0.5f));
-				auto ray = __getRay(x, y, offset);
-				pixel_color += __renderer.computeRayColor(ray, scene, __max_depth); // in range [0-1]
+				auto ray = __getRay(x, y, offset);	// Computes a ray from the camera through the pixel
+																						// with the given subpixel offset.
+				pixel_color += __renderer.computeRayColor(ray, scene, __max_depth); // traces the ray through the scene and returns  
+																																						// its color contribution in range [0-1]
 			}
-			
-			pixel_color /= static_cast<float>(samples_per_pixel); // average
+			pixel_color /= static_cast<float>(samples_per_pixel); // After all samples are collected, 
+																														// the average color is computed by dividing samples_per_pixel
 			
 			auto to_byte = [](float c) -> std::byte {
 				return static_cast<std::byte>(glm::clamp(c * 255.999f, 0.0f, 255.0f)); // from [0-1] to [0-255]
 			};
-
 			auto r = to_byte(pixel_color.r); // from [0-1] to [0-255]
 			auto g = to_byte(pixel_color.g); // from [0-1] to [0-255]
 			auto b = to_byte(pixel_color.b); // from [0-1] to [0-255]
@@ -87,31 +89,42 @@ void Camera::applyGammaCorrection(float gamma) const
  * ============================================
  */
 
-void Camera::__setupViewport(float viewport_h, float focal_length)
+void Camera::__setupViewport(glm::vec3 look_at)
 {
 	auto image_resolution = glm::uvec2(image.resolution_w, image.resolution_h);
+	auto aspect = static_cast<float>(image_resolution.x) / image_resolution.y;
+
+	// Calculates the physical size of the viewport based on the vertical field of view and distance to the target.
+	auto focal_length = glm::length(position - look_at);
+	auto theta = glm::radians(vfov);
+	auto h = glm::tan(theta / 2);
+	auto viewport_h = 2 * h * focal_length;
+	auto viewport_w = viewport_h * (aspect);
+	
+	// Constructs an orthonormal basis for the camera's local coordinate system.
+	__w = glm::normalize(position - look_at);
+	__u = glm::normalize(glm::cross(__up, __w));
+	__v = glm::cross(__w, __u);
 
 	// Calculate the vectors across the horizontal and down the vertical viewport edges.
-	auto aspect = static_cast<float>(image_resolution.x) / image_resolution.y;
-	auto viewport_w = viewport_h * (aspect);
-	auto viewport_u = glm::vec3(viewport_w, 0, 0);
-	auto viewport_v = glm::vec3(0, -viewport_h, 0);
-	// Calculate the horizontal and vertical delta vectors from pixel to pixel.
+	auto viewport_u = viewport_w * __u;			// Vector across viewport horizontal edge
+	auto viewport_v = viewport_h * -(__v);  // Vector down viewport vertical edge
+	
+	// Defines how much to move in world space to go from one pixel to the next horizontally or vertically.
 	__pixel_delta_u = viewport_u / static_cast<float>(image_resolution.x);
 	__pixel_delta_v = viewport_v / static_cast<float>(image_resolution.y);
-
-	// Calculate the location of the upper left pixel.
-	auto viewportUpperLeft = position -
-		glm::vec3(0, 0, focal_length) -
-		viewport_u / 2.f -
+	
+	// Calculates the center of the top-left pixel to begin ray generation.
+	auto viewport_upper_left = position - 
+		(focal_length * __w) - 
+		viewport_u / 2.f - 
 		viewport_v / 2.f;
-	__pixel00_loc = viewportUpperLeft + (__pixel_delta_u + __pixel_delta_v) * 0.5f;
+	__pixel00_loc = viewport_upper_left + (__pixel_delta_u + __pixel_delta_v) * 0.5f;
 }
 
 Ray Camera::__getRay(uint32_t x, uint32_t y, glm::vec2 offset) const
 {
-	// Construct a camera ray originating from the origin and directed at randomly sampled
-	// point around the pixel location i, j.
+	// Computes the exact world - space location of the sample point within the pixel.
 	auto pixel_sample = __pixel00_loc
 		+ ((x + offset.x) * __pixel_delta_u)
 		+ ((y + offset.y) * __pixel_delta_v);
