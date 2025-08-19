@@ -13,7 +13,7 @@
 class Lambertian : public IMaterial
 {
 public:
-	Lambertian(glm::vec3 albedo = glm::vec3(1.f)) // default albedo
+	Lambertian(glm::vec3 albedo = glm::vec3(0.f)) // default albedo
 		: __albedo{ albedo } {}
 	~Lambertian() = default;
 

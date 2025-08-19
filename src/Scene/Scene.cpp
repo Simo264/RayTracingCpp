@@ -16,9 +16,9 @@ void Scene::clear()
 bool Scene::hitAnything(const Ray& ray, const Interval& interval, HitRecord& record) const
 {
 	HitRecord rec{};
-	bool hit_anything = false;
-	float closest_tmax = interval.max;
-
+	auto hit_anything = false;
+	auto closest_tmax = interval.max;
+	
 	for (const auto& object : __objects)
 	{
 		if (object->hit(ray, Interval(interval.min, closest_tmax), rec))

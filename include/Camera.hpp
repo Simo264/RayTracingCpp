@@ -1,68 +1,64 @@
 #pragma once
 
 #include <glm/glm.hpp>
+
 #include "Image.hpp"
 #include "Renderer/Renderer.hpp"
 
 class Scene;
 class Ray;
 
-/**
- * @brief Represents a virtual camera in 3D space for ray tracing.
- * The Camera class is responsible for generating rays through each pixel of an image,
- * based on a configurable position, orientation, and field of view. It supports antialiasing
- * via multiple samples per pixel and applies gamma correction to the final rendered image.
- * The camera uses a viewport defined by the image resolution and vertical field of view,
- * and constructs an orthonormal basis (u, v, w) to orient itself in the scene.
- *
- * @note The camera assumes a right-handed coordinate system and uses a fixed "up" direction.
- */
 class Camera
 {
 public:
-	Camera(glm::vec3 position, 
-				 glm::uvec2 image_resolution,
-				 glm::vec3 look_at,						// Point camera is looking at
-				 float vfov = 90.f,						// Vertical field of view in degrees
-				 float defocus_angle = 0.f,		// Variation angle in degrees
-				 float focus_dist = 10.f			// Distance from center to plane
+	Camera(
+		const glm::vec3& position,
+		const glm::vec3& look_at,
+		const glm::uvec2& image_resolution = { 640, 480 },	// default image resolution: 640x480 (with 4:3 aspect)
+		const glm::vec2& sensor_size = { 36.f, 24.f },			// default sensor size: 36mm x 24mm
+		float focal_length = 18.f,													// default focal length: 18mm
+		float aperture = 1.4,																// default lens aperture:1.4mm
+		float focus_distance = 1000.f												// default focus distance at 1 meter: 1000mm
 	);
 	~Camera() = default;
 
-	/** @brief Renders the scene from the camera's perspective into the image buffer.	*/
-	void captureImage(const Scene& scene);
+	// Camera frame
+	glm::vec3 position;   // Lens center
 
-	/** @brief Applies gamma correction (e.g., 2.2) to the rendered image. */
-	void applyGammaCorrection(float gamma) const;
-	
-	glm::vec3 position;								// Camera position in world space.
-	uint32_t samples_per_pixel;				// Number of samples per pixel for antialiasing.
+	// Imaging surface
+	glm::vec2 sensor_size;				// in mm
+	glm::uvec2 image_resolution;	// in pixels
+	uint32_t samples_per_pixel;
 
+	// Lens parameters
+	float focal_length;   // in mm
+	float aperture;       // in mm
+	float focus_distance; // in mm
 
+	std::shared_ptr<std::byte[]> image_data; // final image
 
-	Image image;											// Image buffer storing the rendered output.
+	void captureImage(const Scene& scene) const;
 
 private:
-	// Initializes the camera's viewport and orientation based on the look-at point.
-	void __setupViewport(glm::vec3 look_at);
-	// Generates a ray through a specific pixel with subpixel offset.
-	Ray __getRay(uint32_t x, uint32_t y, glm::vec2 offset) const;
-
-	glm::vec3 __defocus_disk_sample() const;
-
-	static constexpr inline auto __up = glm::vec3(0.f, 1.f, 0.f); // Fixed camera-relative "up" direction.
-	glm::vec3 __u, __v, __w;          // Orthonormal basis vectors for camera orientation.
-	glm::vec3 __pixel00_loc;          // World-space location of pixel (0,0).
-	glm::vec3 __pixel_delta_u;        // Horizontal pixel spacing vector.
-	glm::vec3 __pixel_delta_v;        // Vertical pixel spacing vector.
-	Renderer __renderer;              // Internal renderer for ray-scene interaction.
-	uint32_t __max_depth;             // Maximum recursion depth for ray bounces.
+	// Setup camera frame and imaging surface
+	void __computeCameraFrame(const glm::vec3& target); // build an orthonormal basis
+	void __computeImagingSurface();											// set up the imaging plane in world space
+	Ray __generateRay(int x, int y, glm::vec2& offset) const;
 	
-	float __vfov;											// Vertical field of view in degrees.
-	float __defocus_angle;						// Variation angle of rays through each pixel
-	float __focus_dist;								// Distance from camera center point to plane 
-	
-	// of perfect focus
-	glm::vec3 __defocus_disk_u;       // Defocus disk horizontal radius
-	glm::vec3 __defocus_disk_v;       // Defocus disk vertical radius
+	// traces the ray through the scene and 
+	// returns its color contribution in range [0-1]
+	glm::vec3 __computeRayColor(const Ray& ray,
+															const Scene& scene,
+															uint32_t depth) const;
+
+	// Camera frame
+	glm::vec3 __forward;    // -Z axis
+	glm::vec3 __right;      // +X axis
+	glm::vec3 __up;         // +Y axis
+
+	// Precomputed values for ray generation
+	glm::vec3 __lower_left_corner;
+	glm::vec3 __horizontal;
+	glm::vec3 __vertical;
+
 };

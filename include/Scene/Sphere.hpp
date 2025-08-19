@@ -7,7 +7,7 @@ class Sphere : public IHittableObject
 public:
 	Sphere(glm::vec3 center = glm::vec3(0.f),							// default center position 
 				 float radius = 1.0f,														// default radius
-				 std::shared_ptr<IMaterial> material = nullptr	// default material
+				 std::shared_ptr<IMaterial> material = nullptr	// no material
 	) :
 		__center{ center }, __radius{ radius }, __material{ material } {}
 
