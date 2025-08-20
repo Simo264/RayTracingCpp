@@ -29,27 +29,28 @@ Camera::Camera(const glm::vec3& position,
 	focal_length{ focal_length },
 	aperture{ aperture },
 	focus_distance{ focus_distance },
-	samples_per_pixel{ 8u },
+	samples_per_pixel{ 64u },
+	__renderer{},
 	__forward{},
 	__right{},
 	__up{},
-	__lower_left_corner{},
-	__horizontal{},
-	__vertical{}
+	__top_left_corner{},
+	__sensor_width_vector{},
+	__sensor_height_vector{}
 {
 	if (image_resolution.x == 0 || image_resolution.y == 0)
 		std::cerr << "Invalid argument: image_resolution\n";
 
-	image_data = std::make_shared<std::byte[]>(image_resolution.x * image_resolution.y * 3);
+	__image_data = std::make_shared<std::byte[]>(image_resolution.x * image_resolution.y * 3);
 	__computeCameraFrame(look_at);
 	__computeImagingSurface();
 }
 
 void Camera::captureImage(const Scene& scene) const
 {
-	for (int y = image_resolution.y - 1; y >= 0; --y)
+	for (auto y = 0; y < image_resolution.y; y++)
 	{
-		for (int x = 0; x < image_resolution.x; x++)
+		for (auto x = 0; x < image_resolution.x; x++)
 		{
 			std::clog << "\rScanlines remaining: " << (image_resolution.y - y) << ' ' << std::flush;
 
@@ -58,7 +59,7 @@ void Camera::captureImage(const Scene& scene) const
 			{
 				auto offset = Random::generateRandomVector2(Interval(-0.5f, 0.5f));
 				auto ray = __generateRay(x, y, offset);
-				pixel_color += __computeRayColor(ray, scene, 5);
+				pixel_color += __renderer.computeRayColor(ray, scene, 10);
 			}
 			pixel_color /= static_cast<float>(samples_per_pixel);
 
@@ -68,11 +69,39 @@ void Camera::captureImage(const Scene& scene) const
 			auto r = to_byte(pixel_color.r); // from [0-1] to [0-255]
 			auto g = to_byte(pixel_color.g); // from [0-1] to [0-255]
 			auto b = to_byte(pixel_color.b); // from [0-1] to [0-255]
-			auto flipped_y = image_resolution.y - 1 - y;
-			auto index = (flipped_y * image_resolution.x + x) * 3;
-			image_data[index + 0] = r;
-			image_data[index + 1] = g;
-			image_data[index + 2] = b;
+			auto index = (y * image_resolution.x + x) * 3;
+			__image_data[index + 0] = r;
+			__image_data[index + 1] = g;
+			__image_data[index + 2] = b;
+		}
+	}
+}
+
+void Camera::applyGammaCorrection(float gamma) const
+{
+	if (gamma == 0.f)
+		return;
+
+	for (auto y = 0; y < image_resolution.y; y++)
+	{
+		for (auto x = 0; x < image_resolution.x; x++)
+		{
+			auto index = (y * image_resolution.x + x) * 3;
+
+			// Convert bytes to normalized [0,1] floats
+			auto r = static_cast<float>(__image_data[index + 0]) / 255.0f;
+			auto g = static_cast<float>(__image_data[index + 1]) / 255.0f;
+			auto b = static_cast<float>(__image_data[index + 2]) / 255.0f;
+
+			// Apply gamma correction
+			r = glm::pow(r, 1.0f / gamma);
+			g = glm::pow(g, 1.0f / gamma);
+			b = glm::pow(b, 1.0f / gamma);
+
+			// Convert back to bytes [0-255]
+			__image_data[index + 0] = static_cast<std::byte>(glm::clamp(r * 255.999f, 0.0f, 255.0f));
+			__image_data[index + 1] = static_cast<std::byte>(glm::clamp(g * 255.999f, 0.0f, 255.0f));
+			__image_data[index + 2] = static_cast<std::byte>(glm::clamp(b * 255.999f, 0.0f, 255.0f));
 		}
 	}
 }
@@ -96,9 +125,9 @@ void Camera::__computeImagingSurface()
 	auto film_height = sensor_size.y;
 	auto image_center = position + __forward * focal_length;
 
-	__horizontal = __right * film_width;
-	__vertical = __up * film_height;
-	__lower_left_corner = image_center - (__horizontal * 0.5f) - (__vertical * 0.5f);
+	__sensor_width_vector = __right * film_width;
+	__sensor_height_vector = __up * film_height;
+	__top_left_corner = image_center - (__sensor_width_vector * 0.5f) + (__sensor_height_vector * 0.5f);
 }
 
 Ray Camera::__generateRay(int x, int y, glm::vec2& offset) const
@@ -106,38 +135,9 @@ Ray Camera::__generateRay(int x, int y, glm::vec2& offset) const
 	// Convert pixel coordinates + offset to normalized screen space [0,1]
 	auto u = (static_cast<float>(x) + 0.5f + offset.x) / image_resolution.x;
 	auto v = (static_cast<float>(y) + 0.5f + offset.y) / image_resolution.y;
-	// Compute the point on the image plane
-	auto image_point = __lower_left_corner + u * __horizontal + v * __vertical;
+	// Compute the point on the image plane, starting from top-left and moving right and down
+	auto image_point = __top_left_corner + u * __sensor_width_vector - v * __sensor_height_vector;
 	// Direction from camera position to image point
 	auto ray_dir = glm::normalize(image_point - position);
 	return Ray(position, ray_dir);
-}
-
-glm::vec3 Camera::__computeRayColor(const Ray& ray,
-																		const Scene& scene,
-																		uint32_t depth) const
-{
-	if (depth == 0) // If we've exceeded the ray bounce limit, no more light is gathered.
-		return glm::vec3(0.f);
-
-	constexpr auto infinity = std::numeric_limits<float>::infinity();
-
-	auto record = HitRecord{};
-	if (scene.hitAnything(ray, Interval(0.001f, infinity), record))
-	{
-		if (record.material == nullptr)
-			return glm::vec3(0.f);
-
-		auto attenuation = glm::vec3();
-		auto scattered_ray = Ray();
-		auto is_scattered = record.material->scatter(ray, record, scattered_ray, attenuation);
-		if (!is_scattered)
-			return attenuation;
-
-		return attenuation * __computeRayColor(scattered_ray, scene, depth - 1);
-	}
-
-	auto unit_direction = glm::normalize(ray.direction());
-	auto a = (unit_direction.y + 1.0f) * 0.5f;
-	return glm::mix(glm::vec3(1.f), glm::vec3(0.5f, 0.7f, 1.0f), a); // linear interpolation between blue and white
 }

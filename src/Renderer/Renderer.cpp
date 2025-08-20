@@ -29,8 +29,8 @@ glm::vec3 Renderer::computeRayColor(const Ray& ray, const Scene& scene, uint32_t
 		glm::vec3 attenuation;
 		Ray scattered_ray;
 		auto is_scattered = record.material->scatter(ray, record, scattered_ray, attenuation);
-		if(!is_scattered)
-			return glm::vec3(0.f);
+		if (!is_scattered)
+			return attenuation;
 		
 		return attenuation * computeRayColor(scattered_ray, scene, depth - 1);
 	}

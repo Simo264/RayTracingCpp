@@ -25,30 +25,55 @@ int main()
   // Materials
   auto material_ground = std::make_shared<Lambertian>(glm::vec3(0.8f, 0.8f, 0.0f));
   auto material_sphere_center = std::make_shared<Lambertian>(glm::vec3(0.1f, 0.2f, 0.5f));
-  //auto material_sphere_left = std::make_shared<Metal>(glm::vec3(0.8f, 0.8f, 0.8f), 0.3f);
-  //auto material_sphere_right = std::make_shared<Metal>(glm::vec3(0.8f, 0.6f, 0.2f), 1.f);
+  
+  //auto material_sphere_left = std::make_shared<Lambertian>(glm::vec3(0.1f, 0.2f, 0.5f));
+  //auto material_sphere_right = std::make_shared<Lambertian>(glm::vec3(0.1f, 0.2f, 0.5f));
+  auto material_sphere_left = std::make_shared<Metal>(glm::vec3(0.8, 0.8, 0.8), 0.3f);
+  auto material_sphere_right = std::make_shared<Metal>(glm::vec3(0.8, 0.6, 0.2), 0.8f);
 
   // World
-  auto ground = std::make_shared<Plane>(glm::vec3(0.f, -0.5f, 0.f), glm::vec3(0.f, 1.f, 0.f), material_ground);
-  auto sphere_center = std::make_shared<Sphere>(glm::vec3(0.0f, 0.0f, -1.2f), 0.5f, material_sphere_center);
-  //auto sphere_left = std::make_shared<Sphere>(glm::vec3(-1.0f, 0.0f, -1.0f), 0.5f, material_sphere_left);
-  //auto sphere_right = std::make_shared<Sphere>(glm::vec3(1.0f, 0.0f, -1.0f), 0.5f, material_sphere_right);
+  auto ground_object = std::make_shared<Plane>(
+    glm::vec3(0.f, -0.5f, 0.f),  // position
+    glm::vec3(0.f, 1.f, 0.f),    // normal
+    material_ground);
+  
+  auto sphere_center_object = std::make_shared<Sphere>(
+    glm::vec3(0.0f, 0.0f, -1.2f), // position
+    0.5f,                         // radius
+    material_sphere_center);
+  
+  auto sphere_left_object = std::make_shared<Sphere>(
+    glm::vec3(-1.0f, 0.0f, -1.0f),  // position
+    0.5f,                           // radius
+    material_sphere_left);
+  
+  auto sphere_right_object = std::make_shared<Sphere>(
+    glm::vec3(1.0f, 0.0f, -1.0f),   // position
+    0.5f,                           // radius
+    material_sphere_right);
   
   Scene scene;
-  scene.add(ground);
-  scene.add(sphere_center);
-  //scene.add(sphere_left);
-  //scene.add(sphere_right);
+  scene.add(ground_object);
+  scene.add(sphere_center_object);
+  scene.add(sphere_left_object);
+  scene.add(sphere_right_object);
   
   // Render
   camera.captureImage(scene);
-  //camera.applyGammaCorrection(2.2f);
-  auto& image = camera.image_data;
   
-  stbi_write_png("image.png", 
+  auto data = camera.getImageData();
+  stbi_write_png("image_no_gamma.png", 
                  image_resolution.x, image_resolution.y,
                  3, 
-                 image.get(),
+                 data,
                  image_resolution.x * 3);
+
+  camera.applyGammaCorrection(2.2f);
+  stbi_write_png("image_gamma.png",
+                 image_resolution.x, image_resolution.y,
+                 3,
+                 data,
+                 image_resolution.x * 3);
+
   return 0;
 }

@@ -23,7 +23,7 @@ public:
 	~Camera() = default;
 
 	// Camera frame
-	glm::vec3 position;   // Lens center
+	glm::vec3 position;						// lens center
 
 	// Imaging surface
 	glm::vec2 sensor_size;				// in mm
@@ -35,21 +35,18 @@ public:
 	float aperture;       // in mm
 	float focus_distance; // in mm
 
-	std::shared_ptr<std::byte[]> image_data; // final image
-
 	void captureImage(const Scene& scene) const;
+	void applyGammaCorrection(float gamma) const;
+	auto getImageData() const { return __image_data.get(); }
 
 private:
 	// Setup camera frame and imaging surface
 	void __computeCameraFrame(const glm::vec3& target); // build an orthonormal basis
 	void __computeImagingSurface();											// set up the imaging plane in world space
 	Ray __generateRay(int x, int y, glm::vec2& offset) const;
-	
-	// traces the ray through the scene and 
-	// returns its color contribution in range [0-1]
-	glm::vec3 __computeRayColor(const Ray& ray,
-															const Scene& scene,
-															uint32_t depth) const;
+
+	Renderer __renderer;
+	std::shared_ptr<std::byte[]> __image_data; // final image
 
 	// Camera frame
 	glm::vec3 __forward;    // -Z axis
@@ -57,8 +54,7 @@ private:
 	glm::vec3 __up;         // +Y axis
 
 	// Precomputed values for ray generation
-	glm::vec3 __lower_left_corner;
-	glm::vec3 __horizontal;
-	glm::vec3 __vertical;
-
+	glm::vec3 __top_left_corner;
+	glm::vec3 __sensor_width_vector;
+	glm::vec3 __sensor_height_vector;
 };

@@ -19,7 +19,6 @@ FetchContent_MakeAvailable(glm)
 set(SOURCES
   src/main.cpp
   src/Camera.cpp
-  src/Image.cpp
   src/Random.cpp
 
   src/Scene/Scene.cpp
@@ -35,7 +34,6 @@ set(SOURCES
 set(HEADERS
     include/stb_image_write.h
     include/Camera.hpp
-    include/Image.hpp
     include/Random.hpp
     include/Ray.hpp
     include/Interval.hpp
