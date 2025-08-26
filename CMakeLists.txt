@@ -16,38 +16,47 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(glm)
 
-set(SOURCES
-  src/main.cpp
-  src/Camera.cpp
-  src/Random.cpp
-
-  src/Scene/Scene.cpp
-  src/Scene/Sphere.cpp
-  src/Scene/Plane.cpp
-  src/Material/Lambertian.cpp
-  src/Material/Metal.cpp
-
-  src/Renderer/Renderer.cpp
-)
-
 # Header files (optional to list, but good for IDEs)
 set(HEADERS
     include/stb_image_write.h
+    include/stb_image.h
     include/Camera.hpp
-    include/Random.hpp
     include/Ray.hpp
-    include/Interval.hpp
-    include/Scene/Scene.hpp
-    include/Scene/IHittableObject.hpp
-    include/Scene/Sphere.hpp
-    include/Scene/Plane.hpp
+    include/Renderer.hpp
+    include/Scene.hpp
+    include/ImageLoader.hpp
+    
+    include/Geometry/IHittableObject.hpp
+    include/Geometry/Sphere.hpp
+    include/Geometry/Plane.hpp
 
     include/Material/IMaterial.hpp
-    include/Material/Lambertian.hpp
+    include/Material/Matte.hpp
+    #include/Material/Glossy.hpp
     include/Material/Metal.hpp
 
-    include/Renderer/Renderer.hpp
+    include/Texture/ITexture.hpp
+    include/Texture/Texture2D.hpp
 )
+
+set(SOURCES
+  src/main.cpp
+  src/Camera.cpp
+  src/Renderer.cpp
+  src/Scene.cpp
+  src/ImageLoader.cpp
+
+  src/Geometry/Sphere.cpp
+  src/Geometry/Plane.cpp
+  
+  src/Material/Matte.cpp
+  #src/Material/Glossy.cpp
+  src/Material/Metal.cpp
+  
+  src/Texture/Texture2D.cpp
+)
+
+
 
 add_executable(RayTracingCpp ${SOURCES} ${HEADERS})
 

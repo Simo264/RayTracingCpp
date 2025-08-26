@@ -1,9 +1,9 @@
 #pragma once
 
 #include <glm/glm.hpp>
+#include <memory>
 
-#include "Image.hpp"
-#include "Renderer/Renderer.hpp"
+#include "Renderer.hpp"
 
 class Scene;
 class Ray;
@@ -14,11 +14,9 @@ public:
 	Camera(
 		const glm::vec3& position,
 		const glm::vec3& look_at,
-		const glm::uvec2& image_resolution = { 640, 480 },	// default image resolution: 640x480 (with 4:3 aspect)
-		const glm::vec2& sensor_size = { 36.f, 24.f },			// default sensor size: 36mm x 24mm
-		float focal_length = 18.f,													// default focal length: 18mm
-		float aperture = 1.4,																// default lens aperture:1.4mm
-		float focus_distance = 1000.f												// default focus distance at 1 meter: 1000mm
+		const glm::uvec2& image_resolution = glm::uvec2(640u, 480u),// default image resolution: 640x480 (with 4:3 aspect)
+		float focal_length = 50.f,													// default focal length: 50mm
+		const glm::vec2& sensor_size = { 36.f, 27.f }				// default sensor size: 36mm x 27mm
 	);
 	~Camera() = default;
 
@@ -29,11 +27,7 @@ public:
 	glm::vec2 sensor_size;				// in mm
 	glm::uvec2 image_resolution;	// in pixels
 	uint32_t samples_per_pixel;
-
-	// Lens parameters
-	float focal_length;   // in mm
-	float aperture;       // in mm
-	float focus_distance; // in mm
+	float focal_length;						// in mm
 
 	void captureImage(const Scene& scene) const;
 	void applyGammaCorrection(float gamma) const;

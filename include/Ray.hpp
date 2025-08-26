@@ -4,35 +4,39 @@
 #include <glm/glm.hpp>
 
 /**
- * @brief The one thing that all ray tracers have is a ray class and a computation of what color is seen along a ray. 
- * Let's think of a ray as a function p(t) = r0 + t*d.
- *  
- * Here P is a 3D position along a line in 3D. A is the ray origin and b is the ray direction. 
- * The ray parameter t is a real number (double in the code). 
- * Plug in a different t and P(t) moves the point along the ray. 
- * Add in negative t values and you can go anywhere on the 3D line. 
- * For positive t, you get only the parts in front of A, and this is what is often called a half-line or a ray.
+ * @brief 
+ * The basic geometric operation required by all realistic renderers is to determine the first scene point along a ray. 
+ * A ray, is the set of points p(t) along a half-open line that start at the ray origin r0 and goes in the ray direction d.
+ * The parameter t is the distance along the ray from the origin, and is defined over the positive real numbers. 
+ * For practical purposes, we limit the distance to a finite interval t:[t_min, t_max].
+ * The minimum distance t_min is set to a small number to avoid numerical problems when considering too-close surfaces. 
+ * The maximum distance t_max is set to the largest floating point value, to encompass the whole scene, 
+ * but can be shorter to ignore some objects when necessary. 
  * 
- * We can represent the idea of a ray as a class, and represent the function P(t) 
- * as a function that we'll call ray::at(t)
+ * We can write points on a ray as: p(t) = r0 + t*d.
+ * 
+ * The first scene point along a ray corresponds to the intersection of the ray and scene elements that is closest 
+ * to the ray origin. Since we parameterize the ray by distance, we can find the closest point by finding 
+ * the minimum distance along the ray for which an intersection occurs. 
+ * This operation is called "ray casting", and we write it as a function that takes the ray and the scene, 
+ * and returns the distance along the ray and the intersection point, if an intersection occurs.
+ *  
+ * we can write the ray casting function as: intersect_scene(r,S) -> set{}
  */
 class Ray
 {
 public:
-	Ray(glm::vec3 origin = glm::vec3(0.f),		// default ray origin
-			glm::vec3 direction = glm::vec3(0.f)	// default ray direction
-	) 
-		: __origin{ origin }, __direction{ direction } {}
-
+	Ray(glm::vec3 origin = glm::vec3(0.f),
+			glm::vec3 direction = glm::vec3(0.0f, 0.0f, 1.0f)
+	) : 
+		origin{ origin }, 
+		direction{ glm::normalize(direction) }
+	{}
 	~Ray() = default;
 	
-	/** @brief Computes the position along the ray at parameter t: p(t) = r0 + t*d */
-	constexpr auto at(float t) const { return __origin + t * __direction; }
-	auto origin() const { return __origin; }
-	auto direction() const { return __direction; }
-
-private:
-	glm::vec3 __origin;
-	glm::vec3 __direction;
+	auto at(float t) const { return origin + t * direction; }
+	
+	glm::vec3 origin;			// Ray origin (r0)
+	glm::vec3 direction;	// Ray direction (d), normalized
 };
 
