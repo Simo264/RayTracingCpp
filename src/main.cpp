@@ -27,7 +27,7 @@ int main()
   // Camera
   constexpr auto camera_position = glm::vec3(0.f, 0.8f, -4.5);
   constexpr auto camera_target = glm::vec3(0.f, 0.5f, 0.f);
-  constexpr auto image_resolution = glm::uvec2(320u, 240u);
+  constexpr auto image_resolution = glm::uvec2(1280u, 960u);
   constexpr float focal_length = 40.f;
   Camera camera(camera_position, camera_target, image_resolution, focal_length);
   camera.samples_per_pixel = 64u;

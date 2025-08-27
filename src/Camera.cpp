@@ -6,8 +6,11 @@
 
 #include <iostream>
 #include <cassert> 
-#include <glm/gtc/random.hpp>
+#include <vector>
+#include <thread>
+#include <chrono>
 
+#include <glm/gtc/random.hpp>
 
 /** 
  * ============================================
@@ -43,33 +46,55 @@ Camera::Camera(const glm::vec3& position,
 
 void Camera::captureImage(const Scene& scene) const
 {
-	for (auto y = 0u; y < image_resolution.y; y++)
-	{
-		for (auto x = 0u; x < image_resolution.x; x++)
+	const auto num_threads = std::thread::hardware_concurrency();
+	std::cout << "Begin execution with " << num_threads << " threads\n";
+	std::cout << "Image resolution: " << image_resolution.x << "x" << image_resolution.y << "\n";
+	std::cout << "Total number of pixel to process: " << image_resolution.x * image_resolution.y << "\n";
+
+	auto render_chunk = [&](uint32_t start_y, uint32_t end_y) -> void {
+		for (auto y = start_y; y < end_y; ++y)
 		{
-			std::clog << "\rScanlines remaining: " << (image_resolution.y - y) << ' ' << std::flush;
-
-			auto pixel_color = glm::vec3(0.f);
-			for (auto sample = 0u; sample < samples_per_pixel; sample++)
+			for (auto x = 0u; x < image_resolution.x; ++x)
 			{
-				auto offset = glm::linearRand(glm::vec2(-0.5f), glm::vec2(0.5f));
-				auto ray = __generateRay(x, y, offset);
-				pixel_color += __renderer.computeRayColor(ray, scene, 10);
-			}
-			pixel_color /= static_cast<float>(samples_per_pixel);
+				auto pixel_color = glm::vec3(0.f);
+				for (auto sample = 0u; sample < samples_per_pixel; sample++)
+				{
+					auto offset = glm::linearRand(glm::vec2(-0.5f), glm::vec2(0.5f));
+					auto ray = __generateRay(x, y, offset);
+					pixel_color += __renderer.computeRayColor(ray, scene, 10);
+				}
+				pixel_color /= static_cast<float>(samples_per_pixel);
 
-			static auto to_byte = [](float c) -> std::byte {
-				return static_cast<std::byte>(glm::clamp(c * 255.999f, 0.0f, 255.0f)); // from [0-1] to [0-255]
-			};
-			auto r = to_byte(pixel_color.r); // from [0-1] to [0-255]
-			auto g = to_byte(pixel_color.g); // from [0-1] to [0-255]
-			auto b = to_byte(pixel_color.b); // from [0-1] to [0-255]
-			auto index = (y * image_resolution.x + x) * 3;
-			__image_data[index + 0] = r;
-			__image_data[index + 1] = g;
-			__image_data[index + 2] = b;
+				// Conversione e scrittura dei dati.
+				static auto to_byte = [](float c) -> std::byte {
+					return static_cast<std::byte>(glm::clamp(c * 255.999f, 0.0f, 255.0f));
+				};
+				auto r = to_byte(pixel_color.r);
+				auto g = to_byte(pixel_color.g);
+				auto b = to_byte(pixel_color.b);
+				auto index = (y * image_resolution.x + x) * 3;
+				__image_data[index + 0] = r;
+				__image_data[index + 1] = g;
+				__image_data[index + 2] = b;
+			}
+		}
+	};
+
+	auto rows_per_thread = image_resolution.y / num_threads;
+	auto start_time = std::chrono::steady_clock::now();
+	{
+		std::vector<std::jthread> threads;
+		threads.reserve(num_threads);
+		for (auto i = 0u; i < num_threads; ++i)
+		{
+			auto start_y = i * rows_per_thread;
+			auto end_y = (i == num_threads - 1) ? image_resolution.y : (i + 1) * rows_per_thread;
+			threads.emplace_back(render_chunk, start_y, end_y);
 		}
 	}
+	const auto end_time = std::chrono::steady_clock::now();
+	const auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
+	std::cout << "Render complete. Elapsed time: " << duration.count() << " ms" << std::endl;
 }
 
 void Camera::applyGammaCorrection(float gamma) const
