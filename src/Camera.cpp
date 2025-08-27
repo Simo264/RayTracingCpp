@@ -136,7 +136,7 @@ void Camera::__computeCameraFrame(const glm::vec3& target)
 {
 	__forward = glm::normalize(target - position);
 	__right = glm::normalize(glm::cross(__forward, glm::vec3(0.f, 1.f, 0.f)));
-	__up = glm::cross(__right, __forward);
+	__up = glm::cross(__forward, __right); // Ordine corretto
 }
 
 void Camera::__computeImagingSurface()
@@ -149,13 +149,9 @@ void Camera::__computeImagingSurface()
 
 Ray Camera::__generateRay(int x, int y, glm::vec2& offset) const
 {
-	float u = (static_cast<float>(x) + 0.5f + offset.x) / image_resolution.x;
-	float v = (static_cast<float>(y) + 0.5f + offset.y) / image_resolution.y;
-
-	auto image_point = __top_left_corner
-		+ u * __sensor_width_vector
-		- v * __sensor_height_vector;
-
+	auto u = (static_cast<float>(x) + 0.5f + offset.x) / image_resolution.x;
+	auto v = 1.0f - (static_cast<float>(y) + 0.5f + offset.y) / image_resolution.y;
+	auto image_point = __top_left_corner + (u * __sensor_width_vector) - (v * __sensor_height_vector);
 	auto ray_dir = glm::normalize(image_point - position);
 	return Ray(position, ray_dir);
 }

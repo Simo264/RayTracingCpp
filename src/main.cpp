@@ -9,8 +9,10 @@
 #include "Geometry/Plane.hpp"
 #include "Material/Matte.hpp"
 #include "Material/Metal.hpp"
+#include "Material/Emissive.hpp"
 
 namespace fs = std::filesystem;
+
 
 static auto getResourcesPath()
 {
@@ -25,7 +27,7 @@ int main()
   auto resources_path = getResourcesPath();
 
   // Camera
-  constexpr auto camera_position = glm::vec3(0.f, 0.8f, -4.5);
+  constexpr auto camera_position = glm::vec3(0.f, 0.8f, 4.5);
   constexpr auto camera_target = glm::vec3(0.f, 0.5f, 0.f);
   constexpr auto image_resolution = glm::uvec2(1280u, 960u);
   constexpr float focal_length = 40.f;
@@ -43,18 +45,17 @@ int main()
   auto texture_metal_white_roughness = createTexture2D(resources_path / "Metal_white/Metal049A_1K-PNG_Roughness.png");
   auto material_metal_white = createMaterial<Metal>(texture_metal_white_color, 1.f, texture_metal_white_roughness);
 
-  auto texture_metal_golden_color = createTexture2D(resources_path / "Metal_golden/Metal048A_1K-PNG_Color.png");
-  auto texture_metal_golden_roughness = createTexture2D(resources_path / "Metal_golden/Metal048A_1K-PNG_Roughness.png");
-  auto material_metal_golden = createMaterial<Metal>(texture_metal_golden_color, 1.f, texture_metal_golden_roughness);
+  auto material_emissive = createMaterial<Emissive>(glm::vec3(1.f));
+
 
 
   // World
   auto ground_object = createObject<Plane>(glm::vec3(0.f, -0.5f, 0.f),  // position
                                            glm::vec3(0.f, 1.f, 0.f),    // normal
                                            material_matte_brown);
-  auto sphere_left = createObject<Sphere>(glm::vec3(-1.5f, 0.0f, -0.0f),// position
+  auto sphere_left = createObject<Sphere>(glm::vec3(-1.5f, 0.0f, -0.0f),// position)
                                           0.5f,                         // radius
-                                          material_metal_golden);
+                                          material_emissive);
   auto sphere_center = createObject<Sphere>(glm::vec3(0.0f, 0.0f, 0.f),   // position
                                             0.5f,                         // radius
                                             material_plastic);
@@ -72,7 +73,7 @@ int main()
   camera.captureImage(scene);
   camera.applyGammaCorrection(2.2f);
   auto data = camera.getImageData();
-  ImageLoader::writePNG("image.png", image_resolution, data);
+  ImageLoader::writePNG("image_lighting.png", image_resolution, data);
 
   return 0;
 }

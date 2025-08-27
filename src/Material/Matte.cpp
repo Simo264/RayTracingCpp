@@ -2,9 +2,12 @@
 #include "Geometry/IHittableObject.hpp"
 
 #include "Ray.hpp"
+#include "Scene.hpp"
 
 #include <glm/gtx/norm.hpp>		// glm::length2
 #include <glm/gtc/random.hpp> // glm::sphericalRand
+
+extern Scene g_scene;
 
 bool Matte::scatter(const Ray& incident,
 										const HitRecord& hit,

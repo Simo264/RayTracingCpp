@@ -8,7 +8,7 @@
 
 bool Metal::scatter(const Ray& incident,
 										const HitRecord& hit,
-										glm::vec3& surcace_color,
+										glm::vec3& surface_color,
 										Ray& scattered_ray) const
 {
 	// This gives the ideal mirror reflection direction.
@@ -16,25 +16,29 @@ bool Metal::scatter(const Ray& incident,
 
 	// Roughness controls how blurry the reflection is.
 	// If a texture is provided, it modulates the scalar roughness per pixel.
-	float roughness = roughness_scale;
+	auto roughness = roughness_scale;
 	if (roughness_texture != nullptr)
-		roughness = roughness_scale * roughness_texture->sample(hit.tc_u, hit.tc_v).r;
+	{
+		auto tex_color = roughness_texture->sample(hit.tc_u, hit.tc_v).r;
+		roughness = roughness_scale * tex_color;
+	}
 
-	roughness = glm::clamp(roughness, 0.0f, 1.0f);
 
-	// Perturb the reflection direction:
-	// adds a random vector scaled by roughness to the perfect reflection.
-	// This simulates microfacet scattering — the rougher the surface, the more the reflection deviates.
-	auto dir = reflected + roughness * glm::sphericalRand(1.0f);
-	scattered_ray = Ray(hit.point, glm::normalize(dir));
+	// La soluzione più semplice ed efficace è perturbare il vettore riflesso con un rumore casuale generato 
+	// non su una sfera completa, ma su un emisfero che punta nella direzione del vettore normale. 
+	// In questo modo, il raggio perturbato sarà sempre sopra la superficie. 
+	// Questo approccio è più coerente con il concetto di microfacets.
+	auto random_dir = glm::normalize(hit.normal + glm::sphericalRand(1.0f));
+	auto dir = glm::normalize(glm::mix(random_dir, reflected, glm::clamp(1.0f - roughness, 0.0f, 1.0f)));
+	scattered_ray = Ray(hit.point, dir);
+
 
 	// Determine Surface Color
-	surcace_color = color_scale;
+	surface_color = color_scale;
 	if (color_texture != nullptr)
-		surcace_color = color_scale * color_texture->sample(hit.tc_u, hit.tc_v);
+		surface_color = color_scale * color_texture->sample(hit.tc_u, hit.tc_v);
 
-	// Ensures the scattered ray is above the surface and
-	// prevents rays from bouncing into the geometry.
+	// Ensures the scattered ray is above the surface
 	return glm::dot(scattered_ray.direction, hit.normal) > 0;
 }
 

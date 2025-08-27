@@ -19,6 +19,8 @@ public:
 									float t_max,
 									HitRecord& record) const;
 
+	auto& getObjects() const { return __objects; }
+
 private:
 	std::vector<std::shared_ptr<IHittableObject>> __objects;
 };

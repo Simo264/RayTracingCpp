@@ -5,13 +5,15 @@
 class Matte : public IMaterial
 {
 public:
-	Matte(glm::vec3 color_scale)
-		: IMaterial(color_scale, nullptr)
-	{}
-	// For textured matte
-	Matte(std::shared_ptr<Texture2D> color_texture)
-		: IMaterial(glm::vec3(1.f), color_texture)
-	{}
+	Matte(glm::vec3 color_scale) : IMaterial()
+	{
+		this->color_scale = color_scale;
+	}
+	Matte(std::shared_ptr<Texture2D> color_texture) : IMaterial()
+	{
+		this->color_scale = glm::vec3(1.f);
+		this->color_texture = color_texture;
+	}
 	~Matte() = default;
 
 	/**
@@ -23,6 +25,4 @@ public:
 							 const HitRecord& hit,
 							 glm::vec3& surface_color,
 							 Ray& scattered_ray) const;
-	
-	glm::vec3 emitted(const HitRecord& hit) const { return glm::vec3(0.f); }
 };

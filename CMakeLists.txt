@@ -18,25 +18,25 @@ FetchContent_MakeAvailable(glm)
 
 # Header files (optional to list, but good for IDEs)
 set(HEADERS
-    include/stb_image_write.h
-    include/stb_image.h
-    include/Camera.hpp
-    include/Ray.hpp
-    include/Renderer.hpp
-    include/Scene.hpp
-    include/ImageLoader.hpp
+  include/stb_image_write.h
+  include/stb_image.h
+  include/Camera.hpp
+  include/Ray.hpp
+  include/Renderer.hpp
+  include/Scene.hpp
+  include/ImageLoader.hpp
     
-    include/Geometry/IHittableObject.hpp
-    include/Geometry/Sphere.hpp
-    include/Geometry/Plane.hpp
+  include/Geometry/IHittableObject.hpp
+  include/Geometry/Sphere.hpp
+  include/Geometry/Plane.hpp
 
-    include/Material/IMaterial.hpp
-    include/Material/Matte.hpp
-    #include/Material/Glossy.hpp
-    include/Material/Metal.hpp
+  include/Material/IMaterial.hpp
+  include/Material/Matte.hpp
+  include/Material/Metal.hpp
+  include/Material/Emissive.hpp
 
-    include/Texture/ITexture.hpp
-    include/Texture/Texture2D.hpp
+  include/Texture/ITexture.hpp
+  include/Texture/Texture2D.hpp
 )
 
 set(SOURCES
@@ -50,8 +50,8 @@ set(SOURCES
   src/Geometry/Plane.cpp
   
   src/Material/Matte.cpp
-  #src/Material/Glossy.cpp
   src/Material/Metal.cpp
+  src/Material/Emissive.cpp
   
   src/Texture/Texture2D.cpp
 )

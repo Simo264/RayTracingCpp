@@ -12,9 +12,9 @@ void Scene::clear()
 }
 
 bool Scene::rayCasting(const Ray& ray,
-													 float t_min,
-													 float t_max,
-													 HitRecord& record) const
+											 float t_min,
+											 float t_max,
+											 HitRecord& record) const
 {
 	auto rec = HitRecord{};
 	auto hit = false;
