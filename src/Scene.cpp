@@ -1,5 +1,6 @@
 #include "Scene.hpp"
 #include "Ray.hpp"
+#include "Material/Emissive.hpp"
 
 void Scene::add(std::shared_ptr<IHittableObject> object)
 {
@@ -29,4 +30,17 @@ bool Scene::rayCasting(const Ray& ray,
 		}
 	}
 	return hit;
+}
+
+std::vector<std::shared_ptr<IHittableObject>> Scene::getEmissiveObjects() const
+{
+	std::vector<std::shared_ptr<IHittableObject>> emissive_objects;
+	for (const auto& object : __objects)
+	{
+		const auto& material = object->getMaterial();
+		auto emissive_material = std::dynamic_pointer_cast<Emissive>(material);
+		if (emissive_material)
+			emissive_objects.push_back(object);
+	}
+	return emissive_objects;
 }

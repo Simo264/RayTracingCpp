@@ -20,10 +20,7 @@ public:
   bool scatter(const Ray& incident,
                const HitRecord& hit,
                glm::vec3& surface_color,
-               Ray& scattered_ray) const
-  {
-    return false;
-  }
+               Ray& scattered_ray) const override { return false; }
 
   glm::vec3 emitted(float u, float v) const override;
 };

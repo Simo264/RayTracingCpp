@@ -49,9 +49,17 @@ void Camera::captureImage(const Scene& scene) const
 	const auto num_threads = std::thread::hardware_concurrency();
 	std::cout << "Begin execution with " << num_threads << " threads\n";
 	std::cout << "Image resolution: " << image_resolution.x << "x" << image_resolution.y << "\n";
-	std::cout << "Total number of pixel to process: " << image_resolution.x * image_resolution.y << "\n";
+	std::cout << "Total number of pixel to process: " 
+		<< image_resolution.x * image_resolution.y << "\n";
+	
+	// Initialize the atomic counter with the total number of rays.
+	std::atomic<size_t> remaining_rays = static_cast<size_t>(image_resolution.x) * image_resolution.y * samples_per_pixel;
+	std::cout << "Total number of rays to process: " << remaining_rays << "\n";
+	std::cout << "\rRemaining rays: " << remaining_rays << " " << std::flush;
+
 
 	auto render_chunk = [&](uint32_t start_y, uint32_t end_y) -> void {
+		size_t rays_in_chunk = (end_y - start_y) * image_resolution.x * samples_per_pixel;
 		for (auto y = start_y; y < end_y; ++y)
 		{
 			for (auto x = 0u; x < image_resolution.x; ++x)
@@ -78,6 +86,10 @@ void Camera::captureImage(const Scene& scene) const
 				__image_data[index + 2] = b;
 			}
 		}
+		// After the chunk is complete, decrement the shared counter by the total rays processed.
+		remaining_rays.fetch_sub(rays_in_chunk);
+		// Print the remaining rays after this thread's work is done.
+		std::cout << "\rRemaining rays: " << remaining_rays << " " << std::flush;
 	};
 
 	auto rows_per_thread = image_resolution.y / num_threads;

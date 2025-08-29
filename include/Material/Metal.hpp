@@ -33,5 +33,5 @@ public:
 	bool scatter(const Ray& incident,
 							 const HitRecord& hit,
 							 glm::vec3& surface_color,
-							 Ray& scattered_ray) const;
+							 Ray& scattered_ray) const override;
 };

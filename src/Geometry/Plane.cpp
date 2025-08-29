@@ -29,8 +29,8 @@ bool Plane::intersect(const Ray& ray,
 	// It's worth noting that if the plane and ray are parallel we return false (indicating no intersection)
 	// when the denominator is less than a very small threshold.
 
-	auto p0 = center;
-	auto n = normal;
+	auto p0 = this->__position;
+	auto n = this->__orientation;
 	auto r0 = ray.origin;
 	auto d = ray.direction;
 	auto denom = glm::dot(d, n);
@@ -41,33 +41,55 @@ bool Plane::intersect(const Ray& ray,
 	if (t < t_min || t > t_max)
 		return false;
 
-	auto p = ray.at(t);
+	auto hit_point = ray.at(t);
+	auto local_coords = this->getTextureCoordinates(hit_point);
+	// Check if the hit point is within the finite dimensions of the plane.
+	if (glm::abs(local_coords.x) > (__width / 2.0f) || glm::abs(local_coords.y) > (__height / 2.0f))
+		return false;
 
-	// calculate texture coordinate
-	auto tangent = glm::normalize(glm::cross(n, glm::vec3(1.f, 0.f, 0.f)));
-	auto bitangent = glm::normalize(glm::cross(n, tangent));
-	auto local_hit = p - p0;
-	float u = glm::dot(local_hit, tangent);
-	float v = glm::dot(local_hit, bitangent);
-	// If you want the texture to repeat every unit
-	u = fmod(u, 1.0f);
-	v = fmod(v, 1.0f);
-	if (u < 0.0f) u += 1.0f;
-	if (v < 0.0f) v += 1.0f;
+	// Normalize texture coordinates to be in the [0, 1] range and handle wrapping.
+	local_coords.x = (local_coords.x / __width) + 0.5f;
+	local_coords.y = (local_coords.y / __height) + 0.5f;
 
-	hit.tc_u = u;
-	hit.tc_v = v;
 	hit.t = t;
-	hit.normal = n;
-	hit.point = p;
-	hit.material = material;
-	hit.is_ray_outside = true;
-
-	// Flip normal if ray hits from below
-	if (denom > 0.f)
+	hit.tc_u = local_coords.x;
+	hit.tc_v = local_coords.y;
+	hit.point = hit_point;
+	hit.material = this->__material;
+	
+	if (glm::dot(ray.direction, n) < 0)
+	{
+		hit.is_ray_outside = true;
+		hit.normal = n;
+	}
+	else
 	{
 		hit.is_ray_outside = false;
 		hit.normal = -n;
 	}
 	return true;
+}
+
+glm::vec2 Plane::getTextureCoordinates(const glm::vec3& p) const
+{
+	// For a plane, texture coordinates are typically a 2D projection of the hit point onto the plane's surface. 
+	// We need to define a local coordinate system (tangent and bitangent vectors) on the plane to map 
+	// the 3D point to a 2D (u, v) pair.
+
+	// Get the plane's normal.
+	auto n = this->__orientation;
+
+	// Calculate a stable orthogonal basis (tangent and bitangent) for the plane.
+	auto tangent = glm::vec3();
+	if (glm::abs(n.x) > glm::abs(n.y))
+		tangent = glm::normalize(glm::vec3(n.z, 0.0f, -n.x));
+	else
+		tangent = glm::normalize(glm::vec3(0.0f, -n.z, n.y));
+	auto bitangent = glm::cross(n, tangent);
+
+	// The hit point 'p' is in world space. We need to project it onto the plane's local coordinate system.
+	auto local_hit = p - this->__position;
+	auto u = glm::dot(local_hit, tangent);
+	auto v = glm::dot(local_hit, bitangent);
+	return glm::vec2(u, v);
 }

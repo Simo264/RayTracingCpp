@@ -5,22 +5,26 @@
 class Sphere : public IHittableObject
 {
 public:
-	Sphere(glm::vec3 center = glm::vec3(0.f),							// default center position 
-				 float radius = 1.0f,														// default radius
-				 std::shared_ptr<IMaterial> material = nullptr		// no material
-	) :
-		IHittableObject(),
-		center{ center },
-		radius{ radius },
-		material{ material }
+	Sphere(const glm::vec3& position, // the center of the sphere
+				 const std::shared_ptr<IMaterial>& material,
+				 float radius = 1.0f) :
+		IHittableObject(position, material),
+		__radius{ radius }
 	{}
+	~Sphere() = default;
 
 	bool intersect(const Ray& ray,
 								 float t_min,
 								 float t_max,
-								 HitRecord& hit) const;
+								 HitRecord& hit) const override;
+	
+	/** @brief return the normal vector */
+	glm::vec3 getNormal(const glm::vec3& p) const override;
 
-	glm::vec3 center;
-	float radius;
-	std::shared_ptr<IMaterial> material;
+	glm::vec2 getTextureCoordinates(const glm::vec3& p) const override;
+
+	auto getRadius() const { return __radius; }
+
+private:
+	float __radius;
 };
