@@ -8,6 +8,8 @@
 #include "Geometry/Plane.hpp"
 
 #include <limits>
+
+#define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/norm.hpp>		// glm::length2
 
 /**

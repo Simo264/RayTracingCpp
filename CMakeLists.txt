@@ -5,16 +5,29 @@ project(RayTracingCpp)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
-
 set(FETCHCONTENT_QUIET OFF)
+set(GLFW_BUILD_EXAMPLES OFF)
+set(GLFW_BUILD_TESTS OFF)
+set(GLFW_BUILD_DOCS OFF)
+set(GLFW_BUILD_INSTALL OFF)
+set(GLFW_VULKAN_STATIC OFF)  # se usi loader Vulkan esterno
 
 include(FetchContent)
 FetchContent_Declare(
   glm
   GIT_REPOSITORY  https://github.com/g-truc/glm.git
-  GIT_TAG         bf71a834948186f4097caa076cd2663c69a10e1e #refs/tags/1.0.1
+  GIT_TAG         1.0.1
 )
 FetchContent_MakeAvailable(glm)
+
+FetchContent_Declare(
+  glfw
+  GIT_REPOSITORY https://github.com/glfw/glfw.git
+  GIT_TAG        3.4 
+)
+FetchContent_MakeAvailable(glfw)
+
+find_package(Vulkan REQUIRED)
 
 # Header files (optional to list, but good for IDEs)
 set(HEADERS
@@ -64,3 +77,5 @@ add_executable(RayTracingCpp ${SOURCES} ${HEADERS})
 target_include_directories(RayTracingCpp PRIVATE "include/")
 
 target_link_libraries(RayTracingCpp PRIVATE glm::glm)
+target_link_libraries(RayTracingCpp PRIVATE glfw)
+target_link_libraries(RayTracingCpp PRIVATE Vulkan::Vulkan)

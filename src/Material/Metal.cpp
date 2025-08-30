@@ -3,6 +3,7 @@
 
 #include "Ray.hpp"
 
+#define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/norm.hpp>		// glm::length2
 #include <glm/gtc/random.hpp> // glm::sphericalRand
 

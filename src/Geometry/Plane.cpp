@@ -1,6 +1,7 @@
 #include "Geometry/Plane.hpp"
 #include "Ray.hpp"
 
+#define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/norm.hpp> // glm::length2
 
 bool Plane::intersect(const Ray& ray,

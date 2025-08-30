@@ -2,6 +2,8 @@
 #include "Ray.hpp"
 
 #include <cmath>
+
+#define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/norm.hpp> // glm::length2
 
 bool Sphere::intersect(const Ray& ray,
