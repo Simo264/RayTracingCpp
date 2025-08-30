@@ -2,6 +2,7 @@
 #include "Scene.hpp"
 #include "Ray.hpp"
 #include "Material/IMaterial.hpp"
+#include "Material/Emissive.hpp"
 
 #include "Geometry/Sphere.hpp"
 #include "Geometry/Plane.hpp"
@@ -53,7 +54,6 @@
  * to account for the average illumination of the environment coming from all other source.
  *
  * 
- * 
  * 5.15.Computing Illumination
  * In the real-world, illumination comes to a point not just from point lights, but from all other surfaces 
  * either because they emit light or because they reflect it. 
@@ -72,7 +72,7 @@
  * This gives an exponential growth of computation that is not feasible if implemented verbatim. 
  * To solve this issue we observe that if we are already taking multiple rays for each pixel, 
  * we can just use a single direction, chosen at random, to estimate the illumination for each camera ray.
- *
+ * 
  * So far, we simply mention random directions without begin specific about how to generate them. 
  * One possibility would be to send rays uniformly in the hemisphere above the shaded point. 
  * To start writing this more realistic model, we first define the illumination L_o(p,o) that leaves a point, p, 
@@ -83,53 +83,40 @@
  * We model surfaces that emit light by setting the emitted illumination L_e(p,o) as a material value k_e.
  * We write the emitted radiance as:
  * L_e(p,o) = 
- *	- k_e if (n dot o) > 0
- *	- 0 otherwise
+ *  - k_e if (n dot o) > 0
+ *  - 0 otherwise
+ * 
+ * We model the reflected illumination for matte surfaces by randomly choosing a direction, 
+ * with probability proportional to the cosine with the normal, 
+ * and computing the reflected radiance L_r(p,o) as the product of the incoming illumination L_i(p, i)
+ * at the point and the material color k_c.
+ * In the product, we skip the cosine since we account for it by choosing incoming directions appropriately.
+ * 
+ * L_r(p,o) = k_c*L_i(p,i)
+ * The incoming illumination L_i(p,i) is either the illumination L_o(q,-i) leaving the first visible point, q, 
+ * along the ray (p,i) or the environment illumination E(i) if no intersection occurs.
+ * L_i(p,i) =
+ *  - L_o(q,-i) if q = raytrace(p,i)
+ *  - E(i) if no intersection
+ * 
+ * You may be wandering how we account for illumination from light sources since we do not specifically handle them. 
+ * In our shading model, we gather illumination from light source indirectly since emission is accounted with the emitted 
+ * illumination. So if any ray in the incoming directions hits an emitting surface, it will pick up the emission from it. 
+ * In fact, shadows from emissive surfaces are also accounted for. 
+ * In this case, what will happen is that some rays sent toward the light will hit the emissive surface while nearby 
+ * rays may hit an occluder, forming a visible shadow.
  */
 
 glm::vec3 Renderer::computeRayColor(const Ray& ray, 
 																		const Scene& scene, 
 																		uint32_t depth) const
 {
-	// check correctly stops the recursion, preventing infinite loops
 	if (depth <= 0)
 		return glm::vec3(0.f);
 
-	constexpr auto t_min = 0.001f;
+	constexpr auto t_min = 1e-3;
 	constexpr auto t_max = std::numeric_limits<float>::infinity();
 	auto hit_record = HitRecord{};
-	if (!scene.rayCasting(ray, t_min, t_max, hit_record))
-	{
-		return glm::vec3(0.f);
-		
-		//auto unit_direction = glm::normalize(ray.direction);
-		//auto a = (unit_direction.y + 1.0f) * 0.5f;
-		//return glm::mix(glm::vec3(1.f), glm::vec3(0.5f, 0.7f, 1.0f), a); // linear interpolation between blue and white
-	}
-	
-	// Get emitted light from the material itself (if it's a light source).
-	auto emitted_color = hit_record.material->emitted(hit_record.tc_u, hit_record.tc_v);
-	auto scattered_ray = Ray();
-	auto surface_color = glm::vec3();
-	// If the material does not scatter light (e.g., it's a pure light source), return only its emitted color.
-	if (!hit_record.material->scatter(ray, hit_record, surface_color, scattered_ray))
-		return emitted_color;
-	
-	// Indirect Illumination
-	auto color_from_scatter = surface_color * computeRayColor(scattered_ray, scene, depth - 1);
-	return emitted_color + color_from_scatter;
-
-
-#if 0
-	// If we've exceeded the ray bounce limit, no more light is gathered.
-	if (depth == 0)
-		return glm::vec3(0.f);
-
-	constexpr auto t_min = 0.001f;
-	constexpr auto t_max = std::numeric_limits<float>::infinity();
-	auto hit_record = HitRecord{};
-
-	// If the ray hits nothing, return the background (ambient) color.
 	if (!scene.rayCasting(ray, t_min, t_max, hit_record))
 	{
 		return glm::vec3(0.f);
@@ -139,31 +126,44 @@ glm::vec3 Renderer::computeRayColor(const Ray& ray,
 		//return glm::mix(glm::vec3(1.f), glm::vec3(0.5f, 0.7f, 1.0f), a); // linear interpolation between blue and white
 	}
 
-	// Get emitted light from the material itself (if it's a light source).
+	// 1. Luce emessa dalla superficie stessa (se è una sorgente luminosa)
 	auto emitted_color = hit_record.material->emitted(hit_record.tc_u, hit_record.tc_v);
-
-	// Determine how the ray scatters.
 	auto scattered_ray = Ray();
-	auto attenuation = glm::vec3();
-	auto is_scattered = hit_record.material->scatter(ray, hit_record, attenuation, scattered_ray);
-
-	// If the material does not scatter light (e.g., it's a pure light source), return only its emitted color.
-	if (!is_scattered)
+	auto material_scatter_color = glm::vec3();
+	// Se il materiale non disperde luce (es. è una luce pura), restituiamo solo il colore emesso.
+	if (!hit_record.material->scatter(ray, hit_record, material_scatter_color, scattered_ray))
 		return emitted_color;
 
-	// Calculate direct illumination from explicit light sources.
-	//auto direct_illumination = __calculateDirectIllumination(t_min, scene, hit_record);
-	auto direct_illumination = glm::vec3(0.f);
-	auto light_sources = scene.getEmissiveObjects();
-	for (const auto& light_source : light_sources)
-		direct_illumination += __calculateDirectIllumination(t_min, scene, hit_record, light_source);
+	// 2. Illuminazione Diretta: campionamento esplicito delle luci
+	auto direct_illumination = glm::vec3(0.0f);
+	auto lights = scene.getEmissiveObjects();
+	for (const auto& light : lights)
+	{
+		auto to_light_direction = glm::normalize(light->getPosition() - hit_record.point);
+		auto shadow_ray = Ray(hit_record.point, to_light_direction);
+		auto shadow_hit_record = HitRecord{};
+		if (!scene.rayCasting(shadow_ray, t_min, glm::distance(light->getPosition(), hit_record.point), shadow_hit_record))
+		{
+			auto emissive_light = std::dynamic_pointer_cast<Emissive>(light);
+			auto light_source_color = emissive_light->emission_scale;
+			auto distance_squared = glm::length(light->getPosition() - hit_record.point);
+			distance_squared *= distance_squared;
 
-	// Calculate indirect illumination through recursive path tracing.
-	auto indirect_illumination = computeRayColor(scattered_ray, scene, depth - 1);
+			auto attenuation = light_source_color / distance_squared;
+			auto cosine_term = glm::max(glm::dot(hit_record.normal, to_light_direction), 0.0f);
 
-	// Combine all contributions: k_emitted + k_color * (direct_light + indirect_light).
-	return emitted_color + attenuation * (direct_illumination + indirect_illumination);
-#endif
+			// Qui si moltiplica la luce diretta per il fattore di riflettanza del materiale.
+			direct_illumination += material_scatter_color * attenuation * cosine_term;
+		}
+	}
+
+	// 3. Illuminazione Indiretta: il rimbalzo ricorsivo
+	// Si usa la ricorsione per calcolare l'illuminazione che proviene da altre superfici.
+	auto indirect_illumination = material_scatter_color * computeRayColor(scattered_ray, scene, depth - 1);
+
+	// 4. Risultato finale: somma di tutti i contributi
+	// Si sommano i contributi diretti e indiretti, e si aggiunge la luce emessa.
+	return emitted_color + direct_illumination + indirect_illumination;
 }
 
 
@@ -172,45 +172,4 @@ glm::vec3 Renderer::computeRayColor(const Ray& ray,
  *		PRIVATE
  * ============================================
  */
-
-glm::vec3 Renderer::__calculateDirectIllumination(float t_min,
-																									const Scene& scene,
-																									const HitRecord& record,
-																									const std::shared_ptr<IHittableObject>& light_source) const
-{
-	
-
-	// Get the light's position and material from the IHittableObject.
-	const auto& light_position = light_source->getPosition();
-	const auto& light_material = light_source->getMaterial();
-	auto emissive_color = light_material->emitted(0, 0);
-	auto light_dir = glm::normalize(light_position - record.point);
-	auto light_distance = glm::length(light_position - record.point);
-
-
-	// Cast a shadow ray from the hit point towards the light source.
-	auto shadow_ray = Ray(record.point, light_dir);
-	auto shadow_hit = HitRecord{};
-	// Offset the shadow ray origin slightly along the normal to avoid self-intersection.
-	shadow_ray.origin = record.point + record.normal * 1e-4f;
-
-	// Check if there is an object between the hit point and the light source.
-	if (scene.rayCasting(shadow_ray, t_min, light_distance, shadow_hit))
-		return glm::vec3(0.f);
-
-	auto direct_illumination = glm::vec3(0.f);
-
-	// Calculate the cosine of the angle between the normal and the light direction.
-	// Only apply illumination if the surface is facing the light.
-	auto cos_theta = glm::dot(record.normal, light_dir);
-	if (cos_theta > 0.f)
-	{
-		// Calculate light intensity with falloff based on the squared distance.
-		// The emissive factor controls the overall brightness.
-		auto light_intensity = emissive_color / (light_distance * light_distance);
-		direct_illumination = light_intensity * cos_theta;
-	}
-
-	return direct_illumination;
-}
 
