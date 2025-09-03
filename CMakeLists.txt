@@ -23,7 +23,7 @@ FetchContent_MakeAvailable(glm)
 FetchContent_Declare(
   glfw
   GIT_REPOSITORY https://github.com/glfw/glfw.git
-  GIT_TAG        3.4 
+  GIT_TAG        3.4  # o la versione che preferisci
 )
 FetchContent_MakeAvailable(glfw)
 
@@ -33,6 +33,7 @@ find_package(Vulkan REQUIRED)
 set(HEADERS
   include/stb_image_write.h
   include/stb_image.h
+  include/VulkanApp.hpp
   include/Camera.hpp
   include/Ray.hpp
   include/Renderer.hpp
@@ -54,6 +55,7 @@ set(HEADERS
 
 set(SOURCES
   src/main.cpp
+  src/VulkanApp.cpp
   src/Camera.cpp
   src/Renderer.cpp
   src/Scene.cpp
@@ -68,8 +70,6 @@ set(SOURCES
   
   src/Texture/Texture2D.cpp
 )
-
-
 
 add_executable(RayTracingCpp ${SOURCES} ${HEADERS})
 
