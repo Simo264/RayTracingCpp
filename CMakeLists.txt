@@ -33,7 +33,15 @@ find_package(Vulkan REQUIRED)
 set(HEADERS
   include/stb_image_write.h
   include/stb_image.h
+  include/Paths.hpp
   include/VulkanApp.hpp
+  include/DeviceManager.hpp
+  include/SwapChainManager.hpp
+  include/QueueFamilyIndices.hpp
+  include/RenderPass.hpp
+  include/GraphicsPipeline.hpp
+  include/Shader.hpp
+
   include/Camera.hpp
   include/Ray.hpp
   include/Renderer.hpp
@@ -55,7 +63,14 @@ set(HEADERS
 
 set(SOURCES
   src/main.cpp
+  src/Paths.cpp
   src/VulkanApp.cpp
+  src/DeviceManager.cpp
+  src/SwapChainManager.cpp
+  src/RenderPass.cpp
+  src/GraphicsPipeline.cpp
+  src/Shader.cpp
+
   src/Camera.cpp
   src/Renderer.cpp
   src/Scene.cpp
