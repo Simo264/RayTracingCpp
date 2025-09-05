@@ -3,18 +3,18 @@
 #include <vulkan/vulkan.h>
 #include <filesystem>
 
-class Shader
+class VulkanShader
 {
 public:
 	using path = std::filesystem::path;
 
-	Shader(const path& spirv_file, VkDevice device);
-	~Shader() = default;
+	VulkanShader(const path& spirv_file, VkDevice device);
+	~VulkanShader() = default;
 
 	void loadBytecode(const path& spirv_file, std::vector<std::byte>& out);
 	auto getShaderModule() const { return __shader_module; }
 
-	void destroy() const;
+	void destroyModule() const;
 
 private:
 	VkDevice __device;

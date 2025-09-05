@@ -1,10 +1,10 @@
-#include "Shader.hpp"
+#include "VulkanShader.hpp"
 
 #include <cassert>
 #include <iostream>
 #include <fstream>
 
-Shader::Shader(const path& spirv_file, VkDevice device) : 
+VulkanShader::VulkanShader(const path& spirv_file, VkDevice device) : 
 	__device{ device },
 	__shader_module{ VK_NULL_HANDLE }
 {
@@ -25,7 +25,7 @@ Shader::Shader(const path& spirv_file, VkDevice device) :
 	assert(result == VK_SUCCESS && "failed to create shader module!");
 }
 
-void Shader::loadBytecode(const path& spirv_file, std::vector<std::byte>& out)
+void VulkanShader::loadBytecode(const path& spirv_file, std::vector<std::byte>& out)
 {
 	auto file = std::ifstream(spirv_file, std::ios::ate | std::ios::binary);
 	if (!file)
@@ -42,7 +42,7 @@ void Shader::loadBytecode(const path& spirv_file, std::vector<std::byte>& out)
 	file.close();
 }
 
-void Shader::destroy() const
+void VulkanShader::destroyModule() const
 {
 	if (__shader_module != VK_NULL_HANDLE)
 		vkDestroyShaderModule(__device, __shader_module, nullptr);

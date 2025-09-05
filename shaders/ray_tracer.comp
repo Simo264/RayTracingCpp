@@ -1,0 +1,100 @@
+#version 450
+
+layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+
+struct GpuSphere 
+{
+  vec3 position;
+  float radius;
+};
+
+
+// Binding 0: Output Image
+layout(binding = 0, rgba8) uniform writeonly restrict image2D outputImage;
+
+// Binding 1: Camera
+//layout(binding = 1, std430) readonly buffer CameraBuffer {
+//     GpuCamera camera;
+//} cam;
+
+// Binding 2: Sphere SSBO
+layout(binding = 2, std430) restrict readonly buffer SphereBuffer {
+  GpuSphere sphere;
+};
+
+// Binding 3: Plane SSBO
+//layout(binding = 3, std430) restrict readonly buffer SphereBuffer {
+//  GpuSphere sphere;
+//};
+
+
+
+
+bool intersectSphere(vec3 ray_origin, vec3 ray_dir, vec3 center, float radius, out float t);
+
+void main() 
+{
+  ivec2 pixel = ivec2(gl_GlobalInvocationID.xy);
+  ivec2 imageSize = imageSize(outputImage);
+
+  // Evita pixel fuori dall'immagine
+  if (pixel.x >= imageSize.x || pixel.y >= imageSize.y)
+      return;
+
+  // Genera il raggio 
+  vec3 origin = vec3(0.0, 0.0, 0.0);
+
+  // Coordinate normalizzate [-1, 1], con aspect ratio
+  vec2 ndc = (vec2(pixel) + 0.5) / vec2(imageSize); // [0,1]
+  ndc = ndc * 2.0 - 1.0; // [-1,1]
+
+  float aspect = float(imageSize.x) / float(imageSize.y);
+  vec3 direction = normalize(vec3(
+      ndc.x * aspect,
+      ndc.y,
+      -1.0
+  ));
+
+  // Interseca con la sfera 
+  float hitT;
+  bool hit = intersectSphere(origin, direction, sphere.position, sphere.radius, hitT);
+
+  // Colore 
+  vec4 color = hit ? vec4(1.0, 0.0, 0.0, 1.0)  // Rosso se colpito
+                  : vec4(0.0, 0.0, 0.0, 1.0); // Nero altrimenti
+
+  imageStore(outputImage, pixel, color);
+}
+
+
+bool intersectSphere(vec3 ray_origin, vec3 ray_dir, vec3 center, float radius, out float t)
+{
+  vec3 r0p0 = ray_origin - center;
+
+  float a = dot(ray_dir, ray_dir);           // lunghezza^2 del vettore (1 se normalizzato)
+  float b = 2.0 * dot(ray_dir, r0p0);
+  float c = dot(r0p0, r0p0) - (radius * radius);
+
+  float delta = b * b - 4.0 * a * c;
+
+  if (delta < 1e-6) 
+  {
+    t = 0.0;
+    return false;
+  }
+
+  float sqrtDelta = sqrt(delta);
+  float denom = 2.0 * a;
+
+  // Primo punto di intersezione (più vicino)
+  t = (-b - sqrtDelta) / denom;
+  if (t >= 0.001) // t_min = 0.001, t_max irrilevante (infinito)
+    return true;
+
+  // Secondo punto (più lontano)
+  t = (-b + sqrtDelta) / denom;
+  if (t >= 0.001) 
+    return true;
+
+  return false;
+}

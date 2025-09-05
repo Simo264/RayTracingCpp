@@ -2,5 +2,6 @@
 
 #include <filesystem>
 
-std::filesystem::path getResourcesDir();
-std::filesystem::path getShadersDir();
+std::filesystem::path& getRootDir();
+std::filesystem::path& getResourcesDir();
+std::filesystem::path& getShadersDir();

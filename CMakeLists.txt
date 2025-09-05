@@ -20,70 +20,71 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(glm)
 
-FetchContent_Declare(
-  glfw
-  GIT_REPOSITORY https://github.com/glfw/glfw.git
-  GIT_TAG        3.4  # o la versione che preferisci
-)
-FetchContent_MakeAvailable(glfw)
-
 find_package(Vulkan REQUIRED)
 
 # Header files (optional to list, but good for IDEs)
 set(HEADERS
   include/stb_image_write.h
   include/stb_image.h
-  include/Paths.hpp
   include/VulkanApp.hpp
-  include/DeviceManager.hpp
-  include/SwapChainManager.hpp
+  include/VulkanDeviceManager.hpp
+  include/VulkanDescriptorManager.hpp
+  include/VulkanComputePipeline.hpp
+  include/VulkanCommandManager.hpp
+  include/VulkanBuffer.hpp
+  include/VulkanImage.hpp
+  include/VulkanShader.hpp
+
   include/QueueFamilyIndices.hpp
-  include/RenderPass.hpp
-  include/GraphicsPipeline.hpp
-  include/Shader.hpp
 
-  include/Camera.hpp
-  include/Ray.hpp
-  include/Renderer.hpp
-  include/Scene.hpp
+  include/Paths.hpp
   include/ImageLoader.hpp
+
+  #include/Camera.hpp
+  #include/Ray.hpp
+  #include/Renderer.hpp
+  #include/Scene.hpp
     
-  include/Geometry/IHittableObject.hpp
-  include/Geometry/Sphere.hpp
-  include/Geometry/Plane.hpp
+  #include/Geometry/IHittableObject.hpp
+  #include/Geometry/Sphere.hpp
+  #include/Geometry/Plane.hpp
 
-  include/Material/IMaterial.hpp
-  include/Material/Matte.hpp
-  include/Material/Metal.hpp
-  include/Material/Emissive.hpp
+  #include/Material/IMaterial.hpp
+  #include/Material/Matte.hpp
+  #include/Material/Metal.hpp
+  #include/Material/Emissive.hpp
 
-  include/Texture/ITexture.hpp
-  include/Texture/Texture2D.hpp
+  #include/Texture/ITexture.hpp
+  #include/Texture/Texture2D.hpp
 )
 
 set(SOURCES
   src/main.cpp
-  src/Paths.cpp
   src/VulkanApp.cpp
-  src/DeviceManager.cpp
-  src/SwapChainManager.cpp
-  src/RenderPass.cpp
-  src/GraphicsPipeline.cpp
-  src/Shader.cpp
+  src/VulkanDeviceManager.cpp
+  src/VulkanDescriptorManager.cpp
+  src/VulkanComputePipeline.cpp
+  src/VulkanCommandManager.cpp
 
-  src/Camera.cpp
-  src/Renderer.cpp
-  src/Scene.cpp
+  src/VulkanBuffer.cpp
+  src/VulkanImage.cpp
+  src/VulkanShader.cpp
+  
+  src/Paths.cpp
   src/ImageLoader.cpp
 
-  src/Geometry/Sphere.cpp
-  src/Geometry/Plane.cpp
+  #src/Camera.cpp
+  #src/Renderer.cpp
+  #src/Scene.cpp
+
+  #src/Geometry/Sphere.cpp
+  #src/Geometry/Plane.cpp
   
-  src/Material/Matte.cpp
-  src/Material/Metal.cpp
-  src/Material/Emissive.cpp
+  #src/Material/Matte.cpp
+  #src/Material/Metal.cpp
+  #src/Material/Emissive.cpp
   
-  src/Texture/Texture2D.cpp
+  #src/Texture/Texture2D.cpp
 )
 
 add_executable(RayTracingCpp ${SOURCES} ${HEADERS})
@@ -92,5 +93,4 @@ add_executable(RayTracingCpp ${SOURCES} ${HEADERS})
 target_include_directories(RayTracingCpp PRIVATE "include/")
 
 target_link_libraries(RayTracingCpp PRIVATE glm::glm)
-target_link_libraries(RayTracingCpp PRIVATE glfw)
 target_link_libraries(RayTracingCpp PRIVATE Vulkan::Vulkan)

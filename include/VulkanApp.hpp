@@ -1,20 +1,41 @@
 #pragma once
 
 #include <vulkan/vulkan.h>
-#include <GLFW/glfw3.h>
-
-#include <vector>
-#include <string_view>
+#include <glm/glm.hpp>
 #include <memory>
+#include <string_view>
 
-class DeviceManager;
-class SwapChainManager;
-class RenderPass;
-class GraphicsPipeline;
-class Shader;
+class VulkanDeviceManager;
+class VulkanDescriptorManager;
+class VulkanComputePipeline;
+class VulkanCommandManager;
+class VulkanBuffer;
+class VulkanImage;
+class VulkanShader;
+
+// C++ structs for sphere and plane to be used in a GPU buffer
+struct GpuSphere
+{
+  alignas(16) glm::vec3 position;  // Forza allineamento a 16 byte
+  float radius;
+};
 
 /**
  * @brief Basic Concepts
+ * 
+ * Compute shader:
+ * Doing computationally expensive calculations on the GPU has several advantages. 
+ * The most obvious one is offloading work from the CPU. Another one is not requiring moving data between the 
+ * CPU's main memory and the GPU's memory. 
+ * All of the data can stay on the GPU without having to wait for slow transfers from main memory.
+ * Aside from these, GPUs are heavily parallelized with some of them having tens of thousands of small compute units. 
+ * This often makes them a better fit for highly parallel workflows than a CPU with a few large compute units.
+ * 
+ * It's important to know that compute is completely separated from the graphics part of the pipeline. 
+ * With the compute shader stage being detached from the graphics pipeline we'll be able to use it anywhere we see fit. 
+ * This is very different from e.g. the fragment shader which is always applied to the transformed output of the vertex shader.
+ * 
+ * ====================================================================================================================
  * 
  * Queue Families:
  * Vulkan organizes different GPU capabilities into queue families. 
@@ -33,82 +54,59 @@ class Shader;
  * 
  * ====================================================================================================================
  * 
- * Window Surface:
- * The window surface (VkSurfaceKHR) is a crucial abstraction in Vulkan that allows for interaction with a window system. 
- * It represents the abstract surface of a window to which rendered images can be presented. 
- * It's a cross-platform concept that connects the Vulkan instance to a native window (in this case, a GLFW window). 
- * Without a surface, it would be impossible to display any rendering output from Vulkan on a monitor. 
+ * Shader storage buffer objects (SSBO):
+ * A shader storage buffer (SSBO) allows shaders to read from and write to a buffer. 
+ * Using these is similar to using uniform buffer objects. 
+ * The biggest differences are that you can alias other buffer types to SSBOs and that they can be arbitrarily large.
  * 
  * ====================================================================================================================
  * 
- * Swap Chain and Image Views:
- * The swap chain (VkSwapchainKHR) is an essential component for displaying rendered images to a window surface without artifacts 
- * like screen tearing. 
- * It is a queue of renderable images that the application can draw to. 
- * The GPU renders to a "back buffer" while the "front buffer" is displayed on the screen. 
- * Once rendering is complete, the buffers are "swapped," making the new frame visible instantly. 
- * The __swapchain member holds the swap chain handle, and the __swapchain_images vector holds the handles 
- * to the actual image buffers.
- * 
- * An image view (VkImageView) is an object that provides a "view" into a VkImage. 
- * An image is just a block of memory, and the image view provides the necessary metadata, like format and subresource range, 
- * for the GPU to interpret that memory correctly. 
- * Every VkImage within the swap chain must have a corresponding VkImageView to be used for rendering. 
- * The __swapchain_image_views vector stores these views, which are essential for creating the render pass and framebuffers later on.
- * 
- * ====================================================================================================================
- * 
- * Render Pass:
- * Before we can finish creating the pipeline, we need to tell Vulkan about the framebuffer attachments that will be used 
- * while rendering. 
- * We need to specify how many color and depth buffers there will be, how many samples to use for each of them and how 
- * their contents should be handled throughout the rendering operations. 
- * All of this information is wrapped in a render pass object, 
- * 
- * ====================================================================================================================
- * 
- * Graphics Pipeline:
- * The Graphics Pipeline is the core component that converts vertex data into rendered pixels. 
- * It's a highly configurable object that bundles together all rendering states, from shaders to fixed-function operations 
- * like rasterization and color blending.
- * 
- * In the context of your ray tracing application, the graphics pipeline has a very specific purpose: 
- * to draw the final image. 
- * Your ray tracer will compute pixel colors on the GPU using a separate compute pipeline. 
- * The graphics pipeline then takes over to display this computed image. It's configured to draw a simple quad that covers 
- * the entire window, with the fragment shader sampling the ray traced texture to color the pixels. 
- * This minimal setup ensures you can efficiently present the results of your ray tracing algorithm.
- * 
- * ====================================================================================================================
- * 
+ * Command pools:
+ * Commands in Vulkan, like drawing operations and memory transfers, are not executed directly using function calls. 
+ * You have to record all of the operations you want to perform in command buffer objects. 
+ * The advantage of this is that when we are ready to tell the Vulkan what we want to do, all of the commands are submitted 
+ * together and Vulkan can more efficiently process the commands since all of them are available together. 
+ * In addition, this allows command recording to happen in multiple threads if so desired.
  */
 
 
 class VulkanApp
 {
 public:
-  VulkanApp(uint32_t window_w, uint32_t window_h, std::string_view window_title);
+  VulkanApp(uint32_t image_width, uint32_t image_height, std::string_view image_output_name);
   ~VulkanApp();
 
   void run();
 
 private:
-  GLFWwindow* __window;
+  uint32_t __image_width;
+  uint32_t __image_height;
+  std::string_view __image_output_name;
   VkInstance __vk_instance;
-  VkSurfaceKHR __surface;
 
-  std::shared_ptr<Shader> __vertex_shader;
-  std::shared_ptr<Shader> __fragment_shader;
+  // Compute shader
+  std::shared_ptr<VulkanShader> __compute_shader;
 
-  std::shared_ptr<DeviceManager> __dev_manager;
-  std::shared_ptr<SwapChainManager> __swapchain_manager;
-  std::shared_ptr<RenderPass> __render_pass;
-  std::shared_ptr<GraphicsPipeline> __graphics_pipeline;
+  // Output image
+  std::shared_ptr<VulkanImage> __compute_output_image;
+
+  // Device manager
+  std::shared_ptr<VulkanDeviceManager> __dev_manager;
+
+  // Descriptor manager
+  std::shared_ptr<VulkanDescriptorManager> __descriptor_manager;
   
+  // Compute shader pipeline
+  std::shared_ptr<VulkanComputePipeline> __compute_pipeline;
+
+  // Command manager
+  std::shared_ptr<VulkanCommandManager> __command_manager;
+
+  // SSBO della sfera
+  std::shared_ptr<VulkanBuffer> __sphere_buffer;
+
 
   // Private helper functions (for internal use only)
-  void __initWindow(uint32_t window_w, uint32_t window_h, std::string_view window_title);
   bool __checkValidationLayerSupport();
   void __createVulkanInstance();
-  void __createSurface();
 };
