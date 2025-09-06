@@ -29,6 +29,29 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityF
   return VK_FALSE;
 }
 
+struct VulkanMaterial
+{
+  // Recommended: Use vec4 for better alignment and simplicity
+  glm::vec4 color_scale;
+  glm::vec4 emission_scale;
+  float roughness_scale;
+  float _pad[3];
+};
+struct VulkanSphere
+{
+  glm::vec3 center;
+  float radius;
+  VulkanMaterial material;
+};
+struct VulkanPlane
+{
+  glm::vec4 position;
+  glm::vec4 normal;
+  glm::vec2 size;
+  float _pad[2];
+  VulkanMaterial material;
+};
+
 /**
  *	=========================
  *					PUBLIC
@@ -50,13 +73,51 @@ VulkanApp::VulkanApp(uint32_t image_width, uint32_t image_height, std::string_vi
   __compute_shader = std::make_shared<VulkanShader>(shader_dir / "ray_tracer.comp.spirv", __dev_manager->getLogicalDevice());
 
   // Create Sphere buffer
-  auto sphere = GpuSphere{ glm::vec3(0.0f, 0.0f, -5.0f), 1.0f };
-  __sphere_buffer = std::make_shared<VulkanBuffer>(__dev_manager,
-                                                   sizeof(GpuSphere),
-                                                   reinterpret_cast<void*>(&sphere),
-                                                   VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
-                                                   VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | 
-                                                   VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+  {
+    auto spheres = std::array<VulkanSphere, 3>{};
+    spheres[0].center = glm::vec3(-1.2f, 0.0f, 0.0f);
+    spheres[0].radius = 0.5f;
+    spheres[0].material.color_scale = glm::vec4(1.0f, 0.0f, 0.0f, 0.f); // Rosso
+    spheres[0].material.emission_scale = glm::vec4(0.0f);
+    spheres[0].material.roughness_scale = 1.0f;
+    
+    spheres[1].center = glm::vec3(0.0f, 0.0f, 0.0f);
+    spheres[1].radius = 0.5f;
+    spheres[1].material.color_scale = glm::vec4(0.0f, 1.0f, 0.0f, 0.f); // Verde
+    spheres[1].material.emission_scale = glm::vec4(0.0f);
+    spheres[1].material.roughness_scale = 1.0f;
+
+    spheres[2].center = glm::vec3(1.2f, 0.0f, 0.0f);
+    spheres[2].radius = 0.5f;
+    spheres[2].material.color_scale = glm::vec4(0.0f, 0.0f, 1.0f, 0.f); // Blu
+    spheres[2].material.emission_scale = glm::vec4(0.0f);
+    spheres[2].material.roughness_scale = 1.0f;
+    __sphere_buffer = std::make_shared<VulkanBuffer>(__dev_manager,
+                                                     sizeof(VulkanSphere)*3,
+                                                     reinterpret_cast<void*>(spheres.data()),
+                                                     VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+                                                     VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                                                     VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+  }
+  // Create Plane buffer
+  {
+    auto plane = VulkanPlane{};
+    plane.position = glm::vec4(0.0f, -0.5f, 0.0f, 0.f);
+    plane.normal = glm::vec4(0.0f, 1.0f, 0.0f, 0.f);
+    plane.size = glm::vec2(10.f, 10.f);
+    plane.material.color_scale = glm::vec4(0.8f, 0.8f, 0.8f, 0.f); // Grigio chiaro
+    plane.material.emission_scale = glm::vec4(0.0f);
+    plane.material.roughness_scale = 1.0f;
+    __plane_buffer = std::make_shared<VulkanBuffer>(__dev_manager,
+                                                    sizeof(VulkanPlane),
+                                                    reinterpret_cast<void*>(&plane),
+                                                    VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+                                                    VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                                                    VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+  }
+
+
+  
   // Create the image output
   __compute_output_image = std::make_shared<VulkanImage>(__dev_manager,
                                                          __image_width,
@@ -70,7 +131,8 @@ VulkanApp::VulkanApp(uint32_t image_width, uint32_t image_height, std::string_vi
   // Aggiungi i binding necessari (es. una camera e una sfera)
   __descriptor_manager->addBinding(0, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT);  // Output image
   //__descriptor_manager->addBinding(1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT); // Camera
-  __descriptor_manager->addBinding(2, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT); // Sphere
+  __descriptor_manager->addBinding(2, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT); // Sphere buffer
+  __descriptor_manager->addBinding(3, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT); // Plane buffer
   
   // Costruisci il layout e il pool, e alloca il set
   __descriptor_manager->build();
@@ -78,7 +140,8 @@ VulkanApp::VulkanApp(uint32_t image_width, uint32_t image_height, std::string_vi
   // Aggiorna il descrittore con i buffer e l'immagine creati
   __descriptor_manager->updateImage(0, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, __compute_output_image->getImageView(), VK_NULL_HANDLE);
   //__descriptor_manager->updateBuffer(1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, __camera_buffer->getBuffer(), sizeof(GpuCamera));
-  __descriptor_manager->updateBuffer(2, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, __sphere_buffer->getBuffer(), sizeof(GpuSphere));
+  __descriptor_manager->updateBuffer(2, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, __sphere_buffer->getBuffer(), sizeof(VulkanSphere) * 3);
+  __descriptor_manager->updateBuffer(3, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, __plane_buffer->getBuffer(), sizeof(VulkanPlane));
 
   // Creazione della pipeline
   __compute_pipeline = std::make_shared<VulkanComputePipeline>(__dev_manager,
@@ -91,29 +154,28 @@ VulkanApp::VulkanApp(uint32_t image_width, uint32_t image_height, std::string_vi
 
 VulkanApp::~VulkanApp()
 {
-  // Aspetta che tutto sia completato
-  vkDeviceWaitIdle(__dev_manager->getLogicalDevice());
-
-  // 1. Distruzione: Command buffer e pool
+  // 1. Command buffer and pool
   __command_manager->cleanup();
 
   // 2. Pipeline
   __compute_pipeline->destroy();
 
-  // 3. Descrittori
+  // 3. Descriptors
   __descriptor_manager->cleanup();
 
   // 4. Shader
   __compute_shader->destroyModule();
 
-  // 5. Buffer: sfera
+  // 5. Scene objects
+  //__camera_buffer->destroy();
   __sphere_buffer->destroy();
+  __plane_buffer->destroy();
 
-  // 6. Immagine di output
+  // 6. Output image
   __compute_output_image->destroy();
 
-  // 7. Distruzione del logical device (tramite DeviceManager)
-  __dev_manager->cleanup();  // Deve chiamare vkDestroyDevice
+  // 7. Logical device 
+  __dev_manager->cleanup(); 
 
   // 8. Vulkan instance
   vkDestroyInstance(__vk_instance, nullptr);

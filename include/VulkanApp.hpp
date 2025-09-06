@@ -13,12 +13,6 @@ class VulkanBuffer;
 class VulkanImage;
 class VulkanShader;
 
-// C++ structs for sphere and plane to be used in a GPU buffer
-struct GpuSphere
-{
-  alignas(16) glm::vec3 position;  // Forza allineamento a 16 byte
-  float radius;
-};
 
 /**
  * @brief Basic Concepts
@@ -102,9 +96,11 @@ private:
   // Command manager
   std::shared_ptr<VulkanCommandManager> __command_manager;
 
-  // SSBO della sfera
+  // Scene objects
   std::shared_ptr<VulkanBuffer> __sphere_buffer;
-
+  std::shared_ptr<VulkanBuffer> __plane_buffer;
+  //std::shared_ptr<VulkanBuffer> __camera_buffer;
+  
 
   // Private helper functions (for internal use only)
   bool __checkValidationLayerSupport();
