@@ -31,7 +31,7 @@ int main()
   constexpr auto image_resolution = glm::uvec2(640u, 480u);
   constexpr float focal_length = 40.f;
   Camera camera(camera_position, camera_target, image_resolution, focal_length);
-  camera.samples_per_pixel = 1024u;
+  camera.samples_per_pixel = 512u;
 
   // Materials
   auto texture_color_brown = createTexture2D(glm::vec3(1.f, 0.87f, 0.67f));
@@ -81,7 +81,7 @@ int main()
   camera.captureImage(scene);
   camera.applyGammaCorrection(2.2f);
   auto data = camera.getImageData();
-  ImageLoader::writePNG("image.png", image_resolution, data);
+  ImageLoader::writePNG("image_cpu_2_samples512.png", image_resolution, data);
 
   return 0;
 }

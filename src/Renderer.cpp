@@ -120,17 +120,16 @@ glm::vec3 Renderer::computeRayColor(const Ray& ray,
 	if (!scene.rayCasting(ray, t_min, t_max, hit_record))
 	{
 		return glm::vec3(0.f);
-
 		//auto unit_direction = glm::normalize(ray.direction);
 		//auto a = (unit_direction.y + 1.0f) * 0.5f;
 		//return glm::mix(glm::vec3(1.f), glm::vec3(0.5f, 0.7f, 1.0f), a); // linear interpolation between blue and white
 	}
 
-	// 1. Luce emessa dalla superficie stessa (se è una sorgente luminosa)
+	// 1. Luce emessa dalla superficie stessa (se ï¿½ una sorgente luminosa)
 	auto emitted_color = hit_record.material->emitted(hit_record.tc_u, hit_record.tc_v);
 	auto scattered_ray = Ray();
 	auto material_scatter_color = glm::vec3();
-	// Se il materiale non disperde luce (es. è una luce pura), restituiamo solo il colore emesso.
+	// Se il materiale non disperde luce (es. ï¿½ una luce pura), restituiamo solo il colore emesso.
 	if (!hit_record.material->scatter(ray, hit_record, material_scatter_color, scattered_ray))
 		return emitted_color;
 
