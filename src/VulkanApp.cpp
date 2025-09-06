@@ -150,7 +150,7 @@ VulkanApp::VulkanApp(uint32_t image_width,
   __descriptor_manager->addBinding(3, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT); // Plane buffer
   __descriptor_manager->addBinding(4, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT); // Light buffer
 
-  // Costruisci il layout e il pool, e alloca il set
+  // Build the layout and pool, and allocate the set
   __descriptor_manager->build();
   
   __descriptor_manager->updateImage(0, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, __compute_output_image->getImageView(), VK_NULL_HANDLE);
@@ -159,9 +159,7 @@ VulkanApp::VulkanApp(uint32_t image_width,
   __descriptor_manager->updateBuffer(3, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, __plane_buffer->getBuffer(), sizeof(VulkanPlane));
   __descriptor_manager->updateBuffer(4, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, __light_buffer->getBuffer(), sizeof(VulkanSphere));
 
-  // Creazione della pipeline
   __compute_pipeline = std::make_shared<VulkanComputePipeline>(__dev_manager,__compute_shader,__descriptor_manager);
-  // Creazione del gestore dei comandi
   __command_manager = std::make_shared<VulkanCommandManager>(__dev_manager);
 }
 
