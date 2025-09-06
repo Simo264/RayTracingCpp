@@ -2,6 +2,7 @@
 
 #include <vulkan/vulkan.h>
 #include <filesystem>
+#include <vector>
 
 class VulkanShader
 {

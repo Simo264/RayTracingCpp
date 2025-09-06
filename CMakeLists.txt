@@ -34,6 +34,7 @@ set(HEADERS
   include/VulkanBuffer.hpp
   include/VulkanImage.hpp
   include/VulkanShader.hpp
+  include/VulkanSceneTypes.hpp
 
   include/QueueFamilyIndices.hpp
 

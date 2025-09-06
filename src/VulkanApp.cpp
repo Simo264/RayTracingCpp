@@ -6,6 +6,7 @@
 #include "VulkanBuffer.hpp"
 #include "VulkanImage.hpp"
 #include "VulkanShader.hpp"
+#include "VulkanSceneTypes.hpp"
 
 #include "Paths.hpp"
 #include "ImageLoader.hpp"
@@ -30,29 +31,6 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityF
   return VK_FALSE;
 }
 
-struct VulkanMaterial
-{
-  // Recommended: Use vec4 for better alignment and simplicity
-  glm::vec4 color_scale;
-  glm::vec4 emission_scale;
-  float roughness_scale;
-  int material_id; // 0:Matte 1:Metal 2:Emissive
-  float _pad[2];
-};
-struct VulkanSphere
-{
-  glm::vec3 center;
-  float radius;
-  VulkanMaterial material;
-};
-struct VulkanPlane
-{
-  glm::vec4 position;
-  glm::vec4 normal;
-  glm::vec2 size;
-  float _pad[2];
-  VulkanMaterial material;
-};
 
 /**
  *	=========================
@@ -328,11 +306,10 @@ void VulkanApp::__createVulkanInstance()
   // Using the validation layers is the best way to avoid your application breaking on different drivers by accidentally 
   // relying on undefined behavior.
   // Validation layers can only be used if they have been installed onto the system.
-  if (!__checkValidationLayerSupport())
-  {
-    std::cerr << "Validation layers requested, but not available!" << std::endl;
-    exit(1);
-  }
+  bool validation_available = __checkValidationLayerSupport();
+  if (!validation_available)
+    std::cerr << "WARNING: Validation layers requested, but not available!" << std::endl;
+
 
   // Now, to create an instance we'll first have to fill in a struct with some information about our application. 
   // This data is technically optional, but it may provide some useful information to the driver in order to optimize 
@@ -349,9 +326,18 @@ void VulkanApp::__createVulkanInstance()
   create_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
   create_info.pApplicationInfo = &app_info;
   create_info.enabledExtensionCount = g_instance_extensions.size();
-  create_info.ppEnabledExtensionNames = g_instance_extensions.data();
-  create_info.enabledLayerCount = g_validation_layers.size();
-  create_info.ppEnabledLayerNames = g_validation_layers.data();
+  create_info.ppEnabledExtensionNames = g_instance_extensions.data();  
+  if (validation_available) 
+  {
+    create_info.enabledLayerCount = g_validation_layers.size();
+    create_info.ppEnabledLayerNames = g_validation_layers.data();
+  } 
+  else 
+  {
+    create_info.enabledLayerCount = 0;
+    create_info.ppEnabledLayerNames = nullptr;
+  }
+  
   auto result = vkCreateInstance(&create_info, nullptr, &__vk_instance);
   assert(result == VK_SUCCESS && "Failed to create instance!");
   std::cout << "VkInstance created successfully" << std::endl;

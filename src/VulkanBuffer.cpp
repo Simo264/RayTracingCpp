@@ -3,6 +3,8 @@
 
 #include <cassert>
 #include <iostream>
+#include <cstring>
+
 
 VulkanBuffer::VulkanBuffer(std::shared_ptr<VulkanDeviceManager> dev_manager,
                            size_t size,
@@ -52,8 +54,8 @@ void VulkanBuffer::loadData(const void* data)
   vkMapMemory(__dev_manager->getLogicalDevice(), __buffer_memory, 0, __buffer_size, 0, &mapped_data);
   memcpy(mapped_data, data, __buffer_size);
 
-  // Per memoria HOST_VISIBLE e HOST_COHERENT, il flush non è strettamente necessario,
-  // ma è buona pratica per chiarezza se si cambiano i tipi di memoria.
+  // Per memoria HOST_VISIBLE e HOST_COHERENT, il flush non ï¿½ strettamente necessario,
+  // ma ï¿½ buona pratica per chiarezza se si cambiano i tipi di memoria.
   // vkFlushMappedMemoryRanges(...)
 
   vkUnmapMemory(__dev_manager->getLogicalDevice(), __buffer_memory);
