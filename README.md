@@ -17,22 +17,35 @@ To build the project:
 
 1. Open a terminal and navigate to the root directory (where the `CMakeLists.txt` file is located).
 2. Run the following command to generate the build files:
-
   ```
   cmake -S . -B build/
   ```
-
-3. Then, compile the project:
-
-  ```
-  cmake --build build/
-  ```
-4. Enter the `build/` directory and run:
-
+3. Enter the `build/` directory and compile:
   ```
    make
   ```
-5. If everything went well, execute the program:
+4. If everything went well, execute the program:
+  ```
+   ./build/RayTracingCpp
+  ```
+
+
+The `vulkan` branch contains the GPU porting with Vulkan. For this version, you must have the **Vulkan-SDK** installed on your system. To build the GPU version:
+1. Make sure you are on the `vulkan` branch.
+2. Navigate to the `/shaders` directory.
+3. Compile the compute shader into SPIR-V using the Vulkan shader compiler `glslc`:
+  ```
+  glslc ray_tracer.comp -o ray_tracer.comp.spirv
+  ```
+4. Return to the project's root directory and generate the build files:
+  ```
+  cmake -S . -B build/
+  ```
+5. Enter the `build/` directory and compile:
+  ```
+   make
+  ```
+6. If everything went well, execute the program:
   ```
    ./build/RayTracingCpp
   ```
