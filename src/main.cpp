@@ -2,7 +2,7 @@
 
 int main()
 {
-  VulkanApp app(640u, 480u, "hello.png");
+  VulkanApp app(640u, 480u, "output.png");
   app.run();
 
   return 0;

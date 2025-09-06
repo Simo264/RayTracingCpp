@@ -13,6 +13,8 @@ struct Material
   vec4 color_scale;
   vec4 emission_scale;
   float roughness_scale;
+  int material_id; // 0:Matte 1:Metal
+  vec2 _pad;
 };
 struct Sphere 
 {
@@ -26,7 +28,7 @@ struct Plane
   vec4 position;
   vec4 normal;
   vec2 size;
-  vec2 __padding;
+  vec2 __pad;
   Material material;
 };
 struct HitRecord 
@@ -45,87 +47,228 @@ struct HitRecord
 layout(binding = 0, rgba8) restrict uniform writeonly image2D outputImage;
 
 // Binding 1: Camera
-//layout(binding = 1, std430) restrict readonly buffer CameraBuffer {
-//  GpuCamera camera;
-//};
+//layout(binding = 1, std430) restrict readonly buffer CameraBuffer { GpuCamera camera; };
 
-// Binding 2: Sphere SSBO
-layout(binding = 2, std430) restrict readonly buffer SphereBuffer {
-  Sphere spheres[];
-};
+layout(binding = 2, std430) restrict readonly buffer SphereBuffer { Sphere spheres[]; };
 
-// Binding 3: Plane SSBO
-layout(binding = 3, std430) restrict readonly buffer PlaneBuffer {
-  Plane plane;
-};
+layout(binding = 3, std430) restrict readonly buffer PlaneBuffer { Plane plane; };
+
+layout(binding = 4, std430) restrict readonly buffer LightBuffer { Sphere light; };
+
+
+uint hash(uint x);
+float random_float(inout uint seed);
+vec3 random_in_unit_sphere(inout uint seed);
+bool scatterMatte(const Ray incident, 
+                  const HitRecord hit, 
+                  inout vec3 surface_color, 
+                  inout Ray scattered_ray, 
+                  inout uint random_seed);
+
+bool scatterMetal(const Ray incident,
+                   const HitRecord hit,
+                   inout vec3 surface_color,
+                   inout Ray scattered_ray,
+                   inout uint random_seed);
 
 bool intersectSphere(Ray ray, Sphere sphere, out HitRecord hit, float t_min, float t_max);
-
 vec2 getPlaneTextureCoordinates(vec3 hit_point, Plane plane);
 bool intersectPlane(Ray ray, Plane plane, out HitRecord hit, float t_min, float t_max);
+vec3 getSkyColor(vec3 direction);
+Ray generateRay(ivec2 pixel, ivec2 image_size, vec3 position);
 
 const float INFINITY = 1000000.f;
+const int MAX_BOUNCES = 16;
+uint random_seed;
 
 void main() 
 {
   ivec2 pixel = ivec2(gl_GlobalInvocationID.xy);
-  ivec2 imageSize = imageSize(outputImage);
-
-  if (pixel.x >= imageSize.x || pixel.y >= imageSize.y)
+  ivec2 image_size = imageSize(outputImage);
+  if (pixel.x >= image_size.x || pixel.y >= image_size.y)
       return;
 
-  vec2 uv = vec2(pixel) / vec2(imageSize);
-  uv = uv * 2.0 - 1.0;
-  uv.y *= -1.0; // Aggiungi questa riga
-  uv.x *= float(imageSize.x) / float(imageSize.y);
+  Ray ray = generateRay(pixel, image_size, vec3(0.0, 0.0, 2.0));
 
-  Ray ray;
-  ray.origin = vec3(0.0, 0.0, 2.0);           // Camera leggermente davanti
-  ray.direction = normalize(vec3(uv, -1.0));  // Guarda verso -Z
+  // Inizializza il seme casuale. Usiamo un hash dell'ID del pixel
+  // per garantire che ogni thread abbia un seme diverso.
+  random_seed = uint(pixel.x) * 192837u + uint(pixel.y) * 456789u;
 
-  HitRecord closest_hit;
-  closest_hit.t = INFINITY;
-  bool hit_found = false;
-
-
-  // 1. Interseca il raggio con le sfere
-  for(int i = 0; i < spheres.length(); ++i) 
+  vec3 final_color = vec3(0.0);
+  vec3 throughput = vec3(1.0); // Renamed "attenuation" to "throughput" for clarity
+  for (int bounce = 0; bounce < MAX_BOUNCES; ++bounce) 
   {
-    HitRecord current_hit;
-    if (intersectSphere(ray, spheres[i], current_hit, 0.001, closest_hit.t))
+    HitRecord closest_hit;
+    closest_hit.t = INFINITY;
+    bool hit_found = false;
+
+    float t_min = 1e-3f;
+
+    // Intersezione con sfere
+    for (int j = 0; j < spheres.length(); ++j) 
     {
-      closest_hit = current_hit;
-      hit_found = true;
+      HitRecord current_hit;
+      if (intersectSphere(ray, spheres[j], current_hit, t_min, closest_hit.t)) 
+      {
+        closest_hit = current_hit;
+        hit_found = true;
+      }
     }
-  }
 
-  // 2. Interseca il raggio con il piano
-  {
-    HitRecord current_hit;
-    if (intersectPlane(ray, plane, current_hit, 0.001, closest_hit.t)) 
+    // Intersezione con piano
     {
-      closest_hit = current_hit;
-      hit_found = true;
+      HitRecord current_hit;
+      if (intersectPlane(ray, plane, current_hit, t_min, closest_hit.t)) 
+      {
+        closest_hit = current_hit;
+        hit_found = true;
+      }
     }
-  }
-  
-  
-  vec4 color;
-  if (hit_found) 
-  {
-    // Usa solo il colore RGB del materiale (ignora alpha per ora)
-    color = vec4(closest_hit.material.color_scale.rgb, 1.0);
-    //color = vec4(1.0, 0.0, 0.0, 1.0);
-  }
-  else
-  {
-    vec3 unit_direction = normalize(ray.direction);
-    float a = (unit_direction.y + 1.0) * 0.5;
-    vec3 sky_color = mix(vec3(1.0), vec3(0.5, 0.7, 1.0), a);
-    color = vec4(sky_color, 1.0); // Sfondo: gradiente cielo
-  }
 
-  imageStore(outputImage, pixel, color);
+    // Intersezione con luce
+    {
+      HitRecord current_hit;
+      if (intersectSphere(ray, light, current_hit, t_min, closest_hit.t)) 
+      {
+        closest_hit = current_hit;
+        hit_found = true;
+      }
+    }
+
+    if (!hit_found) 
+    {
+      final_color += throughput * getSkyColor(ray.direction);
+      break;
+    }
+
+    // SE COLPISCO UNA LUCE, AGGIUNGO EMISSIVO E TERMINO
+    if (closest_hit.material.material_id == 2) 
+    {
+      final_color += closest_hit.material.emission_scale.rgb;
+      break;
+    }
+
+    // ----------------------------------------------------------
+    // ILLUMINAZIONE DIRETTA (Light Sampling)
+    // ----------------------------------------------------------
+    vec3 direct_light_contribution = vec3(0.0);
+    vec3 to_light = light.center - closest_hit.point;
+    float light_dist = length(to_light);
+    vec3 to_light_direction = normalize(to_light);
+
+    Ray shadow_ray;
+    shadow_ray.origin = closest_hit.point + closest_hit.normal * 1e-4f;
+    shadow_ray.direction = to_light_direction;
+
+    bool is_in_shadow = false;
+    HitRecord temp_hit;
+
+    // Test contro sfere (NON la luce, perché non è in spheres[])
+    for (int j = 0; j < spheres.length(); ++j) 
+    {
+      if (intersectSphere(shadow_ray, spheres[j], temp_hit, 1e-4f, light_dist - 1e-4f)) 
+      {
+        is_in_shadow = true;
+        break;
+      }
+    }
+
+    // Test contro piano
+    if (!is_in_shadow) 
+    {
+      if (intersectPlane(shadow_ray, plane, temp_hit, 1e-4f, light_dist - 1e-4f))
+        is_in_shadow = true;
+    }
+
+    if (!is_in_shadow) 
+    {
+      float cosine_term = max(dot(closest_hit.normal, to_light_direction), 0.0);
+      vec3 light_color = light.material.emission_scale.rgb;
+      direct_light_contribution = closest_hit.material.color_scale.rgb * light_color * cosine_term / (light_dist * light_dist);
+      final_color += throughput * direct_light_contribution;
+    }
+
+    // ----------------------------------------------------------
+    // ILLUMINAZIONE INDIRETTA (BSDF Sampling)
+    // ----------------------------------------------------------
+    vec3 surface_color;
+    Ray scattered_ray;
+    bool scattered = false;
+    if (closest_hit.material.material_id == 0) // Matte
+        scattered = scatterMatte(ray, closest_hit, surface_color, scattered_ray, random_seed);
+    else if (closest_hit.material.material_id == 1) // Metal
+        scattered = scatterMetal(ray, closest_hit, surface_color, scattered_ray, random_seed);
+
+    if (!scattered)
+        break;
+
+    ray = scattered_ray;
+    throughput *= surface_color;
+}
+    
+  // Scrivi il colore finale nell'immagine
+  // (Nota: per il "Path Tracing", solitamente si normalizza il colore finale
+  // dividendo per il numero di campioni per pixel, ma qui gestiamo un solo raggio per pixel)
+  imageStore(outputImage, pixel, vec4(final_color, 1.0));
+}
+
+uint hash(uint x) 
+{
+  x = (x ^ (x >> 16)) * 0x85ebca6b;
+  x = (x ^ (x >> 13)) * 0xc2b2ae35;
+  x = (x ^ (x >> 16));
+  return x;
+}
+float random_float(inout uint seed) 
+{
+  seed = hash(seed);
+  return float(seed) / float(0xffffffffu);
+}
+vec3 random_in_unit_sphere(inout uint seed) 
+{
+  float z = random_float(seed) * 2.0 - 1.0;
+  float r = sqrt(max(0.0, 1.0 - z*z)); // evita sqrt negativo (safety)
+  float phi = random_float(seed) * 2.0 * 3.14159265359;
+  float x = r * cos(phi);
+  float y = r * sin(phi);
+  float scale = pow(random_float(seed), 1.0/3.0);
+  return vec3(x, y, z) * scale;
+}
+
+bool scatterMatte(const Ray incident, 
+                  const HitRecord hit, 
+                  inout vec3 surface_color, 
+                  inout Ray scattered_ray, 
+                  inout uint random_seed) 
+{
+  vec3 random_dir = random_in_unit_sphere(random_seed);
+  vec3 scatter_dir = hit.normal + normalize(random_dir);
+  
+  // Gestisce il caso di scattering verso l'interno (vicino a zero)
+  if (length(scatter_dir) < 1e-6) 
+    scatter_dir = hit.normal;
+  
+  scattered_ray.origin = hit.point;
+  scattered_ray.direction = normalize(scatter_dir);
+  
+  surface_color = hit.material.color_scale.rgb;
+  return true;
+}
+
+
+bool scatterMetal(const Ray incident,
+                   const HitRecord hit,
+                   inout vec3 surface_color,
+                   inout Ray scattered_ray,
+                   inout uint random_seed) 
+{
+  vec3 reflected_dir = reflect(normalize(incident.direction), hit.normal);
+  vec3 random_in_sphere = random_in_unit_sphere(random_seed);
+  vec3 scattered_dir = reflected_dir + (hit.material.roughness_scale * random_in_sphere);
+  scattered_ray.origin = hit.point;
+  scattered_ray.direction = normalize(scattered_dir);
+  surface_color = hit.material.color_scale.rgb;
+  return (dot(scattered_ray.direction, hit.normal) > 0.0);
 }
 
 bool intersectSphere(Ray ray, Sphere sphere, out HitRecord hit, float t_min, float t_max) 
@@ -159,8 +302,6 @@ bool intersectSphere(Ray ray, Sphere sphere, out HitRecord hit, float t_min, flo
 
   return true;
 }
-
-
 vec2 getPlaneTextureCoordinates(vec3 hit_point, Plane plane) 
 {
   vec3 u_vec;
@@ -177,7 +318,6 @@ vec2 getPlaneTextureCoordinates(vec3 hit_point, Plane plane)
   float v = dot(relative_hit_point, v_vec);
   return vec2(u, v);
 }
-
 bool intersectPlane(Ray ray, Plane plane, out HitRecord hit, float t_min, float t_max) 
 {
   vec3 p0 = plane.position.xyz;
@@ -215,5 +355,25 @@ bool intersectPlane(Ray ray, Plane plane, out HitRecord hit, float t_min, float 
   } 
   return true;
 }
+
+Ray generateRay(ivec2 pixel, ivec2 image_size, vec3 origin)
+{
+  vec2 uv = vec2(pixel) / vec2(image_size);
+  uv = uv * 2.0 - 1.0;
+  uv.y *= -1.0; 
+  uv.x *= float(image_size.x) / float(image_size.y);
+  Ray ray;
+  ray.origin = origin;
+  ray.direction = normalize(vec3(uv, -1.0));  // Guarda verso -Z
+  return ray;
+}
+
+vec3 getSkyColor(vec3 direction)
+{
+    vec3 unit_direction = normalize(direction);
+    float a = 0.5 * (unit_direction.y + 1.0);
+    return mix(vec3(1.0), vec3(0.5, 0.7, 1.0), a);
+}
+
 
 

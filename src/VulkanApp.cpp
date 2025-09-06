@@ -16,6 +16,7 @@
 #include <cassert>
 #include <limits>
 #include <vector>
+#include <random>
 
 // Validation layers for debugging (optional)
 static const auto g_validation_layers = std::vector<const char*>{ "VK_LAYER_KHRONOS_validation" };
@@ -35,7 +36,8 @@ struct VulkanMaterial
   glm::vec4 color_scale;
   glm::vec4 emission_scale;
   float roughness_scale;
-  float _pad[3];
+  int material_id; // 0:Matte 1:Metal 2:Emissive
+  float _pad[2];
 };
 struct VulkanSphere
 {
@@ -58,7 +60,9 @@ struct VulkanPlane
  *	=========================
  */
 
-VulkanApp::VulkanApp(uint32_t image_width, uint32_t image_height, std::string_view image_output_name) :
+VulkanApp::VulkanApp(uint32_t image_width,
+                     uint32_t image_height,
+                     std::string_view image_output_name) :
   __image_width{ image_width },
   __image_height{ image_height },
   __image_output_name{ image_output_name }
@@ -77,23 +81,21 @@ VulkanApp::VulkanApp(uint32_t image_width, uint32_t image_height, std::string_vi
     auto spheres = std::array<VulkanSphere, 3>{};
     spheres[0].center = glm::vec3(-1.2f, 0.0f, 0.0f);
     spheres[0].radius = 0.5f;
-    spheres[0].material.color_scale = glm::vec4(1.0f, 0.0f, 0.0f, 0.f); // Rosso
-    spheres[0].material.emission_scale = glm::vec4(0.0f);
-    spheres[0].material.roughness_scale = 1.0f;
-    
+    spheres[0].material.color_scale = glm::vec4(1.f, 0.270f, 0.f, 0.f); // Rosso
+    spheres[0].material.material_id = 0; // matte
+
     spheres[1].center = glm::vec3(0.0f, 0.0f, 0.0f);
     spheres[1].radius = 0.5f;
-    spheres[1].material.color_scale = glm::vec4(0.0f, 1.0f, 0.0f, 0.f); // Verde
-    spheres[1].material.emission_scale = glm::vec4(0.0f);
-    spheres[1].material.roughness_scale = 1.0f;
+    spheres[1].material.color_scale = glm::vec4(1.0f, 1.0f, 1.0f, 0.f); // bianco
+    spheres[1].material.roughness_scale = 0.0f;
+    spheres[1].material.material_id = 1; // metal
 
     spheres[2].center = glm::vec3(1.2f, 0.0f, 0.0f);
     spheres[2].radius = 0.5f;
-    spheres[2].material.color_scale = glm::vec4(0.0f, 0.0f, 1.0f, 0.f); // Blu
-    spheres[2].material.emission_scale = glm::vec4(0.0f);
-    spheres[2].material.roughness_scale = 1.0f;
+    spheres[2].material.color_scale = glm::vec4(0.254f, 0.411f, 0.882f, 0.f); // Blu
+    spheres[2].material.material_id = 0; // matte
     __sphere_buffer = std::make_shared<VulkanBuffer>(__dev_manager,
-                                                     sizeof(VulkanSphere)*3,
+                                                     sizeof(VulkanSphere) * 3,
                                                      reinterpret_cast<void*>(spheres.data()),
                                                      VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
                                                      VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
@@ -105,9 +107,10 @@ VulkanApp::VulkanApp(uint32_t image_width, uint32_t image_height, std::string_vi
     plane.position = glm::vec4(0.0f, -0.5f, 0.0f, 0.f);
     plane.normal = glm::vec4(0.0f, 1.0f, 0.0f, 0.f);
     plane.size = glm::vec2(10.f, 10.f);
-    plane.material.color_scale = glm::vec4(0.8f, 0.8f, 0.8f, 0.f); // Grigio chiaro
+    plane.material.color_scale = glm::vec4(0.980, 0.921, 0.843, 0.f); // Grigio chiaro
     plane.material.emission_scale = glm::vec4(0.0f);
-    plane.material.roughness_scale = 1.0f;
+    plane.material.roughness_scale = 0.0f;
+    plane.material.material_id = 0; // matte
     __plane_buffer = std::make_shared<VulkanBuffer>(__dev_manager,
                                                     sizeof(VulkanPlane),
                                                     reinterpret_cast<void*>(&plane),
@@ -115,9 +118,22 @@ VulkanApp::VulkanApp(uint32_t image_width, uint32_t image_height, std::string_vi
                                                     VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
                                                     VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
   }
-
-
   
+  // Create light buffer
+  {
+    auto sphere_light = VulkanSphere{};
+    sphere_light.center = glm::vec3(0.f, 1.f, 2.0f);
+    sphere_light.radius = 0.25f;
+    sphere_light.material.emission_scale = glm::vec4(1.0f);
+    sphere_light.material.material_id = 2; // Emissive
+    __light_buffer = std::make_shared<VulkanBuffer>(__dev_manager,
+                                                     sizeof(VulkanSphere),
+                                                     reinterpret_cast<void*>(&sphere_light),
+                                                     VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+                                                     VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                                                     VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+  }
+
   // Create the image output
   __compute_output_image = std::make_shared<VulkanImage>(__dev_manager,
                                                          __image_width,
@@ -128,26 +144,23 @@ VulkanApp::VulkanApp(uint32_t image_width, uint32_t image_height, std::string_vi
 
 
   __descriptor_manager = std::make_shared<VulkanDescriptorManager>(__dev_manager);
-  // Aggiungi i binding necessari (es. una camera e una sfera)
   __descriptor_manager->addBinding(0, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_SHADER_STAGE_COMPUTE_BIT);  // Output image
   //__descriptor_manager->addBinding(1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT); // Camera
   __descriptor_manager->addBinding(2, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT); // Sphere buffer
   __descriptor_manager->addBinding(3, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT); // Plane buffer
-  
+  __descriptor_manager->addBinding(4, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_SHADER_STAGE_COMPUTE_BIT); // Light buffer
+
   // Costruisci il layout e il pool, e alloca il set
   __descriptor_manager->build();
   
-  // Aggiorna il descrittore con i buffer e l'immagine creati
   __descriptor_manager->updateImage(0, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, __compute_output_image->getImageView(), VK_NULL_HANDLE);
   //__descriptor_manager->updateBuffer(1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, __camera_buffer->getBuffer(), sizeof(GpuCamera));
   __descriptor_manager->updateBuffer(2, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, __sphere_buffer->getBuffer(), sizeof(VulkanSphere) * 3);
   __descriptor_manager->updateBuffer(3, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, __plane_buffer->getBuffer(), sizeof(VulkanPlane));
+  __descriptor_manager->updateBuffer(4, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, __light_buffer->getBuffer(), sizeof(VulkanSphere));
 
   // Creazione della pipeline
-  __compute_pipeline = std::make_shared<VulkanComputePipeline>(__dev_manager,
-                                                               __compute_shader,
-                                                               __descriptor_manager);
-
+  __compute_pipeline = std::make_shared<VulkanComputePipeline>(__dev_manager,__compute_shader,__descriptor_manager);
   // Creazione del gestore dei comandi
   __command_manager = std::make_shared<VulkanCommandManager>(__dev_manager);
 }
@@ -167,9 +180,9 @@ VulkanApp::~VulkanApp()
   __compute_shader->destroyModule();
 
   // 5. Scene objects
-  //__camera_buffer->destroy();
   __sphere_buffer->destroy();
   __plane_buffer->destroy();
+  __light_buffer->destroy();
 
   // 6. Output image
   __compute_output_image->destroy();
@@ -196,10 +209,13 @@ void VulkanApp::run()
   // 2. Transizione di layout: UNDEFINED -> GENERAL (per la scrittura dello shader)
   // ========================================================================
   auto initial_barrier = __compute_output_image->createImageLayoutBarrier(VK_IMAGE_LAYOUT_UNDEFINED, 
-                                                                          VK_IMAGE_LAYOUT_GENERAL);
+                                                                     VK_IMAGE_LAYOUT_GENERAL);
   __command_manager->pipelineBarrier(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
                                      VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
                                      initial_barrier);
+
+
+
 
   // ========================================================================
   // 3. Lega pipeline e descriptor set

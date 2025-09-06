@@ -67,7 +67,9 @@ class VulkanShader;
 class VulkanApp
 {
 public:
-  VulkanApp(uint32_t image_width, uint32_t image_height, std::string_view image_output_name);
+  VulkanApp(uint32_t image_width, 
+            uint32_t image_height, 
+            std::string_view image_output_name);
   ~VulkanApp();
 
   void run();
@@ -99,7 +101,7 @@ private:
   // Scene objects
   std::shared_ptr<VulkanBuffer> __sphere_buffer;
   std::shared_ptr<VulkanBuffer> __plane_buffer;
-  //std::shared_ptr<VulkanBuffer> __camera_buffer;
+  std::shared_ptr<VulkanBuffer> __light_buffer;
   
 
   // Private helper functions (for internal use only)
