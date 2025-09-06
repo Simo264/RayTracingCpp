@@ -41,11 +41,21 @@ To build the project:
 
 Below are some example images rendered by the algorithm:
 
+### CPU Implementation
+
 ![Example 1](screenshots/image_cpu_1_samples512.png)
 *Scene with three spheres: two with Matte material, one with Metal material, and a plane with Matte material.*
 
 ![Example 2](screenshots/image_cpu_2_samples512.png)
 *Scene in the dark with the same three spheres and plane, plus an additional sphere with Emissive material acting as a light source.*
+
+### GPU Implementation
+
+![Example 3](screenshots/image_gpu_vulkan_1_samples_1024.png)
+*Scene with the same three spheres and plane, plus an additional sphere with Emissive material acting as a light source. Rendered on GPU.*
+
+![Example 4](screenshots/image_gpu_vulkan_2_samples_1024.png)
+*Scene in the dark with the same three spheres and plane, plus an additional sphere with Emissive material acting as a light source. Rendered on GPU.*
 
 ## ✨ Features (CPU Version)
 
