@@ -44,18 +44,22 @@ Below are some example images rendered by the algorithm:
 ### CPU Implementation
 
 ![Example 1](screenshots/image_cpu_1_samples512.png)
-*Scene with three spheres: two with Matte material, one with Metal material, and a plane with Matte material.*
+*Scene with three spheres: two with Matte material, one with Metal material, and a plane with Matte material.
+Generated with **512 samples per pixel**.*
 
 ![Example 2](screenshots/image_cpu_2_samples512.png)
-*Scene in the dark with the same three spheres and plane, plus an additional sphere with Emissive material acting as a light source.*
+*Scene in the dark with the same three spheres and plane, plus an additional sphere with Emissive material acting as a light source.
+Generated with **512 samples per pixel**.*
 
 ### GPU Implementation
 
 ![Example 3](screenshots/image_gpu_vulkan_1_samples_1024.png)
-*Scene with the same three spheres and plane, plus an additional sphere with Emissive material acting as a light source. Rendered on GPU.*
+*Scene with the same three spheres and plane, plus an additional sphere with Emissive material acting as a light source.
+Generated with **1024 samples per pixel**.*
 
 ![Example 4](screenshots/image_gpu_vulkan_2_samples_1024.png)
-*Scene in the dark with the same three spheres and plane, plus an additional sphere with Emissive material acting as a light source. Rendered on GPU.*
+*Scene in the dark with the same three spheres and plane, plus an additional sphere with Emissive material acting as a light source.
+Generated with **1024 samples per pixel**.*
 
 ## ✨ Features (CPU Version)
 
@@ -66,9 +70,9 @@ Below are some example images rendered by the algorithm:
 - No external libraries used except for **stb_image**
 - Texture mapping is supported
 - **Multi-threaded rendering** for improved performance
-- Number of samples per pixel for demonstration images: **512**
 
 ## 📚 References
 - [Ray Tracing in One Weekend](https://raytracing.github.io/books/RayTracingInOneWeekend.html) – Peter Shirley, Trevor David Black, Steve Hollasch
 - [Ray Tracing: The Next Week](https://raytracing.github.io/books/RayTracingTheNextWeek.html) – Peter Shirley, Trevor David Black, Steve Hollasch
 - Professor's textbook (course material)
+- [Vulkan Tutorial](https://vulkan-tutorial.com/)
